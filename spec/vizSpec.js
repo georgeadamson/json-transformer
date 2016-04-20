@@ -2,23 +2,20 @@ import fs from 'fs';
 import path from 'path';
 import rimraf from 'rimraf';
 import { PNG } from 'pngjs';
-import webdriver, { By } from 'selenium-webdriver';
 
 import Viz from '../src/index.js';
+
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 30000
 
 describe('Viz', function() {
   const testTag = 'test'
-  const testPath = path.join(__dirname, 'test');
-  const driver = new webdriver.Builder().
-    withCapabilities(webdriver.Capabilities.phantomjs()).
-    build();
-  const viz = new Viz(testTag, driver, testPath);
+  const testPath = path.join(__dirname, 'spec-screenshots');
+  const viz = new Viz(testTag, 'phantomjs', testPath);
 
   beforeEach(function() {
-    driver.get('http://www.google.com');
-    driver.manage().window().setSize(1100,1600);
+    viz.driver.get('http://www.google.com');
+    viz.driver.manage().window().setSize(1100,1600);
   });
 
   it('should exist', function() {
@@ -64,7 +61,7 @@ describe('Viz', function() {
     })
 
     it('should resolve to {width, height, top, left}', (done) => {
-      let element = driver.findElement(By.css('#hplogo'))
+      let element = viz.driver.findElement(viz.Webdriver.By.css('#hplogo'))
       viz.getDimensions(element).then((dimensions) => {
         expect(dimensions).not.toBeUndefined()
         expect(dimensions.width).toEqual(jasmine.any(Number))

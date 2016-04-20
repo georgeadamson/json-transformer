@@ -1,10 +1,13 @@
-import fs from 'fs'
-import path from 'path'
-import mkdirp from 'mkdirp'
-import rimraf from 'rimraf'
+import fs         from 'fs'
+import path       from 'path'
+import mkdirp     from 'mkdirp'
+import rimraf     from 'rimraf'
 import pixelmatch from 'pixelmatch'
-import { PNG } from 'pngjs'
-import PNGCrop from 'png-crop'
+import { PNG }    from 'pngjs'
+import PNGCrop    from 'png-crop'
+import Imagemin   from 'imagemin'
+import webdriver  from 'selenium-webdriver';
+
 
 class Viz {
   static PATHS = {
@@ -14,9 +17,25 @@ class Viz {
       REF: 'reference'
   };
 
-  constructor(tag, driver, rootPath) {
+  // http://selenium.googlecode.com/git/docs/api/javascript/class_webdriver_Capabilities.html
+  static DRIVERS = 'chrome,firefox,ie,ipad,iphone,opera,phantomjs,safari'.split(',')
+
+
+  constructor(tag, driver = 'phantomjs', rootPath) {
+
+    // Init Selenium webdriver if a webdriver instance was not supplied:
+    if( typeof driver === 'string' ){
+      if( ~Viz.DRIVERS.indexOf(driver) ){
+        const capabilities = webdriver.Capabilities[driver]()
+        driver = new webdriver.Builder().withCapabilities(capabilities).build();
+      } else {
+        throw `\nINVALID_WEBDRIVER_NAME: Unable to create a Selenium webdriver named: ${driver}\n`
+      }
+    }
+
     this.tag = tag
-    this.driver = driver
+    this.driver = driver        // Expose Selenium webdriver instance, eg: viz.driver.get('http://www.foobar.com')
+    this.Webdriver = webdriver  // Expose Selenium webdriver convenience methods, eg: viz.Webdriver.By.css(...)
     this.rootPath = rootPath
     this.createPaths()
   }
@@ -37,8 +56,10 @@ class Viz {
           return true
         }
       }).then(() => {
+        // Look for reference image:
         return this.exists(refPath)
       }).then((hasReference) => {
+        // Has reference image:
         if(hasReference) {
           this.compare(
             tmpPath,
@@ -53,17 +74,16 @@ class Viz {
               }
             })
           })
+        // Missing reference image:
         } else {
-          this.move(tmpPath, newPath).then(() => {
-            this.clean().then(() => {
-              reject(new Error(`\n\nNO_REFERENCE_ERROR: There is no reference image. Screenshot has been moved to:\n${newPath}\n\n`))
-            })
-          })
+          this._moveToNew()
         }
       })
     })
+
   }
 
+  // Grab screenshot and save it to tmp folder:
   capture(name) {
     return new Promise( (resolve, reject) => {
       this.driver.takeScreenshot().then( (data) => {
@@ -130,27 +150,45 @@ class Viz {
     })
   }
 
-  createPaths() {
+  // Create all the image folders:
+  createPaths () {
     return Promise.all(Object.keys(Viz.PATHS).map((key) => {
       return this.createPath(path.join(this.rootPath, Viz.PATHS[key]))
     }))
   }
 
-  createPath(targetPath) {
+  // Create an image folder:
+  createPath (targetPath) {
     return new Promise((resolve, reject) => mkdirp(targetPath, (err) => err ? reject(err) : resolve(targetPath)))
   }
 
-  exists(sourcePath) {
+  exists (sourcePath) {
     return new Promise((resolve, reject) => fs.stat(sourcePath, (err, stats) => err ? resolve(false) : resolve(stats.isFile() || stats.isDirectory())))
   }
 
-  move(sourcePath, targetPath) {
+  move (sourcePath, targetPath) {
     return new Promise((resolve, reject) => fs.rename(sourcePath, targetPath, (err) => err ? reject(err) : resolve(true)))
   }
 
-  clean() {
+  // Delete tmp folder:
+  clean () {
     return new Promise((resolve, reject) => rimraf(path.join(this.rootPath, Viz.PATHS.TMP), fs, () => resolve()))
   }
+
+  // Return a reference to the Selenium webdriver instance:
+  // driver () {
+  //   return this.driver
+  // }
+
+  _moveToNew (){
+    console.log('NEWWWWWW')
+    return this.move(tmpPath, newPath).then(() => {
+      this.clean().then(() => {
+        reject(new Error(`\n\nNO_REFERENCE_ERROR: There is no reference image. Screenshot has been moved to:\n${newPath}\n\n`))
+      })
+    })
+  }
+
 }
 
 export default Viz;
