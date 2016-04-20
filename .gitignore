@@ -2,3 +2,4 @@
 node_modules
 spec/test
 phantomjsdriver.log
+npm-debug.log
