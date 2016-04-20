@@ -23,13 +23,13 @@ class Viz {
 
   constructor(tag, driver = 'phantomjs', rootPath) {
 
-    // Init Selenium webdriver if a webdriver instance was not supplied:
+    // Init Selenium webdriver if an instance was not supplied:
     if( typeof driver === 'string' ){
       if( ~Viz.DRIVERS.indexOf(driver) ){
         const capabilities = webdriver.Capabilities[driver]()
         driver = new webdriver.Builder().withCapabilities(capabilities).build();
       } else {
-        throw `\nINVALID_WEBDRIVER_NAME: Unable to create a Selenium webdriver named: ${driver}\n`
+        throw `INVALID_WEBDRIVER_NAME: Unable to create a Selenium webdriver named "${driver}".`
       }
     }
 
