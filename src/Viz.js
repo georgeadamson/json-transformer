@@ -76,14 +76,14 @@ class Viz {
           })
         // Missing reference image:
         } else {
-          this._moveToNew()
+          this._rejectNewImage(tmpPath, newPath)
         }
       })
     })
 
   }
 
-  // Grab screenshot and save it to tmp folder:
+  // Grab screenshot and save it to tmp folder: (Returns the new path)
   capture(name) {
     return new Promise( (resolve, reject) => {
       this.driver.takeScreenshot().then( (data) => {
@@ -167,7 +167,7 @@ class Viz {
   }
 
   move (sourcePath, targetPath) {
-    return new Promise((resolve, reject) => fs.rename(sourcePath, targetPath, (err) => err ? reject(err) : resolve(true)))
+    return new Promise((resolve, reject) => fs.rename(sourcePath, targetPath, (err) => err ? reject(err) : resolve(targetPath)))
   }
 
   // Delete tmp folder:
@@ -175,12 +175,26 @@ class Viz {
     return new Promise((resolve, reject) => rimraf(path.join(this.rootPath, Viz.PATHS.TMP), fs, () => resolve()))
   }
 
-  // Return a reference to the Selenium webdriver instance:
-  // driver () {
-  //   return this.driver
-  // }
 
-  _moveToNew (){
+  // Shink image filesize: (Overwrites original file)
+  optimise (imagePath) {
+    return new Promise((resolve, reject) => {
+      // https://github.com/imagemin/imagemin
+      // optipng options: https://github.com/imagemin/imagemin-optipng
+      new Imagemin()
+        .src(imagePath)
+        .dest(path.dirname(imagePath))
+        .use(Imagemin.optipng({ optimizationLevel : 2 }))
+        .run((err, files) => {
+          if (err) reject(err)
+          resolve(imagePath)
+        });
+    })
+  }
+
+
+  // Move image from tmp to new folder and raise error to draw attention to missing reference image:
+  _rejectNewImage (tmpPath, newPath){
     console.log('NEWWWWWW')
     return this.move(tmpPath, newPath).then(() => {
       this.clean().then(() => {

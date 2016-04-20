@@ -23,6 +23,7 @@
     "selenium-webdriver": "^2.48.2"
   },
   "dependencies": {
+    "imagemin": "^4.0.0",
     "mkdirp": "^0.5.1",
     "pixelmatch": "^4.0.1",
     "png-crop": "0.0.0",

@@ -13,6 +13,16 @@ describe('Viz', function() {
   const testPath = path.join(__dirname, 'spec-screenshots');
   const viz = new Viz(testTag, 'phantomjs', testPath);
 
+  // Helper for reading image file stats:
+  function getStats (imagePath) {
+    return new Promise((resolve, reject) => {
+      fs.stat(imagePath, (err, stats) => {
+        if(err) reject(err); else resolve(stats)
+      })
+    })
+  }
+
+
   beforeEach(function() {
     viz.driver.get('http://www.google.com');
     viz.driver.manage().window().setSize(1100,1600);
@@ -37,12 +47,7 @@ describe('Viz', function() {
       return viz.capture(title).then(function(result) {
         let imagePath = path.join(testPath, Viz.PATHS.TMP, `${testTag}-${title}.png`)
         expect(result).toEqual(imagePath)
-        return new Promise((resolve, reject) => {
-          fs.stat(imagePath, (err, stats) => {
-            if(err) reject(err)
-            resolve(stats)
-          })
-        })
+        return getStats(imagePath)
       }).then((stats) => {
         expect(stats.isFile()).toBe(true)
       }).catch(function(err) {
@@ -50,6 +55,44 @@ describe('Viz', function() {
       }).then(done)
     });
   });
+
+  describe('#optimise', function() {
+
+    it('should return a Promise', function() {
+      expect(viz.optimise().constructor.name).toEqual('Promise')
+    });
+
+    it('should shrink the size of a png file', function(done) {
+      const title     = 'optimise'
+      const imagePath = path.join(testPath, Viz.PATHS.TMP, `${testTag}-${title}.png`)
+      let fileSizeBeforeOptim
+
+      // Capture image and compare its size before/after optimisation:
+      return viz.capture(title).then(function(result) {
+
+        expect(result).toEqual(imagePath)
+        return getStats(imagePath)
+
+      }).then( (stats) => {
+
+        fileSizeBeforeOptim = stats.size
+        expect( stats.isFile()      ).toBe(true)
+        expect( fileSizeBeforeOptim ).toBeGreaterThan(0)
+
+        return viz.optimise(imagePath).then(getStats)
+
+      }).then( (newStats) => {
+
+        expect( newStats.size ).toBeLessThan( fileSizeBeforeOptim )
+
+      }).catch( function(err) {
+        expect(err).toBeUndefined()
+      }).then(done)
+
+    });
+
+  });
+
 
   describe('#getDimensions', () => {
     it('should exist', () => {
