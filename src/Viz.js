@@ -9,12 +9,19 @@ import Imagemin   from 'imagemin'
 import webdriver  from 'selenium-webdriver';
 
 
+// Helper to DRY the spec code...
+function fileExists(path){
+  try { return fs.statSync(path).isFile() } catch(e){ return false }
+}
+
+
 class Viz {
+
   static PATHS = {
-      TMP: 'tmp',
-      NEW: 'new',
-      DIFF: 'diff',
-      REF: 'reference'
+    TMP  : 'tmp',
+    NEW  : 'new',
+    DIFF : 'diff',
+    REF  : 'reference'
   };
 
   // http://selenium.googlecode.com/git/docs/api/javascript/class_webdriver_Capabilities.html
@@ -34,52 +41,89 @@ class Viz {
     }
 
     this.tag = tag
-    this.driver = driver        // Expose Selenium webdriver instance, eg: viz.driver.get('http://www.foobar.com')
-    this.Webdriver = webdriver  // Expose Selenium webdriver convenience methods, eg: viz.Webdriver.By.css(...)
+    this.driver = driver        // To expose Selenium webdriver instance, eg: viz.driver.get('http://www.foobar.com')
+    this.Webdriver = webdriver  // To expose Selenium webdriver convenience methods, eg: viz.Webdriver.By.css(...)
     this.rootPath = rootPath
     this.createPaths()
   }
 
   visualise(name, element = false) {
-    let tmpPath = path.join(this.rootPath, Viz.PATHS.TMP, `${this.tag}-${name}.png`)
-    let refPath = path.join(this.rootPath, Viz.PATHS.REF, `${this.tag}-${name}.png`)
-    let newPath = path.join(this.rootPath, Viz.PATHS.NEW, `${this.tag}-${name}.png`)
-    let diffPath = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}-diff.png`)
+    let tmpPath      = path.join(this.rootPath, Viz.PATHS.TMP,  `${this.tag}-${name}.png`)
+    let refPath      = path.join(this.rootPath, Viz.PATHS.REF,  `${this.tag}-${name}.png`)
+    let newPath      = path.join(this.rootPath, Viz.PATHS.NEW,  `${this.tag}-${name}.png`)
+    let diffPath     = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}-diff.png`)
     let diffPathCopy = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}.png`)
+
+    // Not sure why bind(this) is necessary here :(
+    cropIfNecessary  = cropIfNecessary.bind(this)
+    lookForRefImage  = lookForRefImage.bind(this)
+    raiseNewImageErr = raiseNewImageErr.bind(this)
+    raiseIfMismatch  = raiseIfMismatch.bind(this)
+    this.clean       = this.clean.bind(this)
+
     return new Promise((resolve, reject) => {
-      this.capture(name).then((result) => {
+
+      this.capture(name)
+        .then( cropIfNecessary )
+        .then( lookForRefImage )
+        .then(hasReference => {
+          if (hasReference) {
+            raiseIfMismatch(tmpPath, refPath, diffPath)
+            .catch(reject)
+          } else {
+            raiseNewImageErr(tmpPath, newPath)
+            .catch(reject)
+          }
+        })
+        .catch(reject)
+
+    })
+
+    // Move image from tmp to new folder and raise error to draw attention to missing reference image:
+    function raiseIfMismatch (tmpPath, newPath, diffPath){
+      return this.compare(tmpPath, refPath, diffPath)
+        .then(this.clean)
+        .then((resultOfCompare) => {
+          if(resultOfCompare > 0) {
+            console.log('RESULT OF COMPARE',resultOfCompare)
+            throw `VISUAL_MATCH_FAIL: The pages and/or elements do not match. A diff has been created at:\n${diffPath}`
+          } else {
+            return true
+          }
+        })
+    }
+
+    // Move image from tmp to new folder and raise error to draw attention to missing reference image:
+    function raiseNewImageErr (tmpPath, newPath){
+
+      console.log('raiseNewImageErr: tmpPath exists:',fileExists(tmpPath))
+
+      return this.move(tmpPath, newPath)
+        .then(this.clean)
+        .then(result => {
+          console.log('throw',result)
+          throw `NO_REFERENCE_ERROR: There is no reference image. Screenshot has been moved to:\n${newPath}`
+        })
+    }
+
+    // Helper to make the promise chain more readable.
+    function cropIfNecessary (result) {
+      return new Promise( (resolve, reject) => {
         if(element) {
-          return this.getDimensions(element).then((dimensions) => {
-            return this.crop(tmpPath, tmpPath, dimensions)
-          })
+          return this.getDimensions(element)
+            .then((dimensions) => this.crop(tmpPath, tmpPath, dimensions))
+            .then(() => resolve(tmpPath))
         } else {
-          return true
-        }
-      }).then(() => {
-        // Look for reference image:
-        return this.exists(refPath)
-      }).then((hasReference) => {
-        // Has reference image:
-        if(hasReference) {
-          this.compare(
-            tmpPath,
-            refPath,
-            diffPath
-          ).then((result) => {
-            this.clean().then(() => {
-              if(result > 0) {
-                reject(new Error(`\n\nVISUAL_MATCH_FAIL: The pages and/or elements do not. A diff has been created at:\n${diffPath}\n\n`))
-              } else {
-                resolve(true)
-              }
-            })
-          })
-        // Missing reference image:
-        } else {
-          this._rejectNewImage(tmpPath, newPath)
+          resolve(tmpPath)
         }
       })
-    })
+    }
+
+    // Helper to make the promise chain more readable.
+    // Note the deliberate use of => so the function is created like fn.bind(this)
+    function lookForRefImage () {
+      return this.exists(refPath)
+    }
 
   }
 
@@ -94,6 +138,7 @@ class Viz {
           resolve(imagePath)
         })
       })
+      .catch(reject)
     })
   }
 
@@ -163,16 +208,26 @@ class Viz {
   }
 
   exists (sourcePath) {
-    return new Promise((resolve, reject) => fs.stat(sourcePath, (err, stats) => err ? resolve(false) : resolve(stats.isFile() || stats.isDirectory())))
+    try {
+      return new Promise((resolve, reject) => fs.stat(sourcePath, (err, stats) => err ? resolve(false) : resolve(stats.isFile() || stats.isDirectory())))
+    } catch(e) {
+      resolve(false)
+    }
   }
 
   move (sourcePath, targetPath) {
-    return new Promise((resolve, reject) => fs.rename(sourcePath, targetPath, (err) => err ? reject(err) : resolve(targetPath)))
+    return new Promise((resolve, reject) => {
+      try {
+        fs.rename(sourcePath, targetPath, (err) => err ? reject(err) : resolve(targetPath))
+      } catch (err) {
+        reject(err)
+      }
+    })
   }
 
-  // Delete tmp folder:
-  clean () {
-    return new Promise((resolve, reject) => rimraf(path.join(this.rootPath, Viz.PATHS.TMP), fs, () => resolve()))
+  // Empty the "tmp" folder: (Pass the current "result" argument through to the next promise)
+  clean (result) {
+    return new Promise((resolve, reject) => rimraf(path.join(this.rootPath, Viz.PATHS.TMP), fs, (err) => err ? reject(err) : resolve(result)))
   }
 
 
@@ -187,19 +242,8 @@ class Viz {
         .use(Imagemin.optipng({ optimizationLevel : 2 }))
         .run((err, files) => {
           if (err) reject(err)
-          resolve(imagePath)
+          else resolve(imagePath)
         });
-    })
-  }
-
-
-  // Move image from tmp to new folder and raise error to draw attention to missing reference image:
-  _rejectNewImage (tmpPath, newPath){
-    console.log('NEWWWWWW')
-    return this.move(tmpPath, newPath).then(() => {
-      this.clean().then(() => {
-        reject(new Error(`\n\nNO_REFERENCE_ERROR: There is no reference image. Screenshot has been moved to:\n${newPath}\n\n`))
-      })
     })
   }
 

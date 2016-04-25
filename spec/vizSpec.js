@@ -2,7 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import rimraf from 'rimraf';
 import { PNG } from 'pngjs';
+import customFileMatchers from './helpers/fileMatchers';
 
+// This is what we're testing:
 import Viz from '../src/index.js';
 
 
@@ -13,81 +15,305 @@ describe('Viz', function() {
   const testPath = path.join(__dirname, 'spec-screenshots');
   const viz = new Viz(testTag, 'phantomjs', testPath);
 
-  // Helper for reading image file stats:
-  function getStats (imagePath) {
+  // Diddy helpers to DRY the spec code...
+  function fileDelete(path){
+    try { fs.unlinkSync(path) } catch(e) {}
+  }
+  function deleteScreenshotsFolder(){
     return new Promise((resolve, reject) => {
-      fs.stat(imagePath, (err, stats) => {
-        if(err) reject(err); else resolve(stats)
-      })
+      rimraf(testPath, fs, resolve)
     })
   }
 
 
-  beforeEach(function() {
-    viz.driver.get('http://www.google.com');
-    viz.driver.manage().window().setSize(1100,1600);
+  beforeAll(function(){
+    // Define some extra matchers for checking whether a file exists etc:
+    jasmine.addMatchers(customFileMatchers)
+  })
+
+  beforeEach(function(done) {
+    viz.driver.manage().window().setSize(1100,1600)
+    viz.driver.get(path.join(__dirname, 'support', 'google.htm')) // viz.driver.get('http://www.google.com')
+    viz.createPaths(testPath).then(done)
   });
+
+  afterEach(function(done) {
+    deleteScreenshotsFolder().then(done)
+  });
+
 
   it('should exist', function() {
-    expect(Viz).not.toBe(null);
+    expect(Viz).not.toBe(null)
   });
 
-  describe('#capture', function() {
 
+  describe("#createPaths", function() {
     it('should exist', function() {
-      expect(Viz).not.toBe(null);
+      expect(viz.createPaths).not.toBeUndefined()
     });
 
     it('should return a Promise', function() {
-      expect(viz.capture('test').constructor.name).toEqual('Promise')
+      expect(viz.createPaths(testPath).constructor.name).toEqual('Promise')
     });
 
-    it('should save a PNG to the test folder', function(done) {
-      let title = 'capture'
-      return viz.capture(title).then(function(result) {
-        let imagePath = path.join(testPath, Viz.PATHS.TMP, `${testTag}-${title}.png`)
-        expect(result).toEqual(imagePath)
-        return getStats(imagePath)
-      }).then((stats) => {
-        expect(stats.isFile()).toBe(true)
-      }).catch(function(err) {
-        expect(err).toBeUndefined()
-      }).then(done)
+    it('should resolve to an Array of paths', function(done) {
+      viz.createPaths( testPath ).then(function(results) {
+        expect(results.constructor.name).toEqual('Array');
+        expect(results[0]).toEqual(path.join(testPath, Viz.PATHS.TMP))
+        expect(results[1]).toEqual(path.join(testPath, Viz.PATHS.NEW))
+        expect(results[2]).toEqual(path.join(testPath, Viz.PATHS.DIFF))
+        expect(results[3]).toEqual(path.join(testPath, Viz.PATHS.REF))
+        done()
+      })
+    })
+
+    it('should create a path for each of "Viz.PATHS"', (done) => {
+      deleteScreenshotsFolder().then(function(){
+
+        // Ensure they testPath does not exist before we test it's creation:
+        expect(testPath).not.toFolderExist()
+
+        viz.createPaths( testPath ).then(function(results) {
+          Promise.all(Object.keys(Viz.PATHS).map((key) => {
+            let vizPath = path.join(testPath, Viz.PATHS[key])
+            return new Promise((resolve, reject) => {
+              expect(vizPath).toFolderExist()
+              resolve(true)
+            })
+          }))
+          .then(done)
+        })
+
+      })
+    })
+  })
+
+
+  describe('#exists', function() {
+
+    it('should exist', () => {
+      expect(viz.exists).not.toBeUndefined()
+    })
+
+    it('should return a Promise', function() {
+      expect(viz.exists('path/to/nonexistent/file').constructor.name).toEqual('Promise')
     });
+
+    it('should return false if file does not exist', function(done) {
+      viz.exists('path/to/nonexistent/file').then(function (result) {
+        expect(result).toBe(false)
+        done()
+      })
+    });
+
+    it('should return true if file does exist', function(done) {
+      const samplePath = path.join(__dirname, 'support', 'google.png')
+      viz.exists(samplePath).then(function (result) {
+        expect(result).toBe(true)
+        done()
+      })
+    });
+
+  })
+
+
+  describe('#move', function() {
+
+    const filePathA    = path.join(testPath, Viz.PATHS.TMP, 'a.txt')
+    const filePathB    = path.join(testPath, Viz.PATHS.TMP, 'b.txt')
+    const fileContentA = 'This is file A'
+
+    beforeEach( function () { fs.writeFileSync(filePathA, fileContentA)    })
+    afterEach ( function () { fileDelete(filePathA); fileDelete(filePathB) })
+
+    it('should exist', () => {
+      expect(viz.move).not.toBeUndefined()
+    })
+
+    it('should return a Promise', function() {
+      expect(viz.move('a','b').constructor.name).toEqual('Promise')
+    });
+
+    it('should have correct test data set up', function() {
+      // Just belt and braces to ensure the beforeEach is doinf its stuff:
+      expect( filePathA ).toFileExist()
+      expect( filePathB ).not.toFileExist()
+    });
+
+    it('should move file from A to new path B', function(done) {
+      viz.move(filePathA, filePathB).then(function(newPath) {
+        expect( newPath ).toEqual(filePathB)
+        expect( newPath ).toFileExist()
+        expect( newPath ).toFileContain(fileContentA)
+        done()
+      })
+    });
+
+    it('should move file from A to overwrite B', function(done) {
+      fs.writeFileSync(filePathB, 'This file should be overwritten')
+      expect( filePathB ).toFileExist()
+
+      viz.move(filePathA, filePathB).then(function(newPath) {
+        expect( newPath ).toEqual(filePathB)
+        expect( newPath ).toFileExist()
+        expect( newPath ).toFileContain(fileContentA)
+        done()
+      })
+    });
+
+    it('should reject promise when moving a file that does not exist', function(done) {
+      viz.move(filePathB, filePathA).then(function(result) {
+        expect(result).toBe('a deliberate error message about "no such file or directory" instead')
+        done();
+      }).catch(function(err){
+        expect( '' + err ).toContain('no such file or directory')
+        done()
+      })
+    });
+
   });
 
+
+  describe('#clean', function() {
+
+    const filePathA = path.join(testPath, Viz.PATHS.TMP, 'a.txt')
+
+    beforeEach( function () { fs.writeFileSync(filePathA, 'file contents') })
+    afterEach ( function () { fileDelete(filePathA) })
+
+    it('should exist', () => {
+      expect(viz.clean).not.toBeUndefined()
+    })
+
+    it('should return a Promise', function() {
+      expect(viz.clean().constructor.name).toEqual('Promise')
+    });
+
+    it('should empty the tmp folder', function(done) {
+      const argPassedIn = 'foobar'
+      expect(filePathA).toFileExist()
+      viz.createPaths( testPath ).then(function(results) {
+        viz.clean(argPassedIn).then(function(result) {
+          expect(result).toEqual(argPassedIn)
+          expect(filePathA).not.toFileExist()
+          done()
+        })
+      })
+    });
+
+  })
+
+
+  describe('#capture', function() {
+
+    const title = 'capture'
+
+    it('should exist', () => {
+      expect(viz.capture).not.toBeUndefined()
+    })
+
+    it('should return a Promise', function() {
+      expect(viz.capture(title).constructor.name).toEqual('Promise')
+    });
+
+    it('should save PNG to the "new" folder', function(done) {
+      const imagePath = path.join(testPath, Viz.PATHS.TMP, `${testTag}-${title}.png`)
+
+      fileDelete(imagePath)
+      expect( imagePath ).not.toFileExist()
+
+      viz.capture(title).then(function(result) {
+        expect(result).toEqual(imagePath)
+        //done()
+      })
+      .catch(err => {
+        expect(err).toBeUndefined()
+        //done()
+      })
+      .then(done)
+
+    })
+
+    it('should reject promise if the target folder does not exist', function(done) {
+      const title      = '/MADE/UP/PATH/capture'
+      const madeUpPath = path.join(testPath, Viz.PATHS.TMP, `${testTag}-${title}.png`)
+
+      fileDelete(madeUpPath)
+      expect( madeUpPath ).not.toFileExist()
+
+      return viz.capture(title).then(function(result) {
+        expect(result).toBe('a deliberate error message about "no such file or directory" instead')
+        done()
+      })
+      .catch(err => {
+        expect( '' + err ).toContain('no such file or directory')
+        done()
+      })
+
+    })
+
+  })
+
+
   describe('#optimise', function() {
+
+    // Helper for reading image file stats: (For size and isFile() etc)
+    function getStats (imagePath) {
+      return new Promise((resolve, reject) => {
+        fs.stat(imagePath, (err, stats) => {
+          if(err) reject(err); else resolve(stats)
+        })
+      })
+    }
+
+    it('should exist', () => {
+      expect(viz.optimise).not.toBeUndefined()
+    })
 
     it('should return a Promise', function() {
       expect(viz.optimise().constructor.name).toEqual('Promise')
     });
 
+
     it('should shrink the size of a png file', function(done) {
       const title     = 'optimise'
       const imagePath = path.join(testPath, Viz.PATHS.TMP, `${testTag}-${title}.png`)
-      let fileSizeBeforeOptim
+      let origFileSize
+
+      fileDelete(imagePath)
+      expect(imagePath).not.toFileExist()
 
       // Capture image and compare its size before/after optimisation:
       return viz.capture(title).then(function(result) {
 
-        expect(result).toEqual(imagePath)
+        expect(result   ).toEqual(imagePath)
+        expect(imagePath).toFileExist()
         return getStats(imagePath)
 
-      }).then( (stats) => {
+      })
+      .then( (stats) => {
 
-        fileSizeBeforeOptim = stats.size
-        expect( stats.isFile()      ).toBe(true)
-        expect( fileSizeBeforeOptim ).toBeGreaterThan(0)
+        expect( stats.isFile() ).toBe(true)
+        expect( stats.size     ).toBeGreaterThan(0)
 
-        return viz.optimise(imagePath).then(getStats)
+        origFileSize = stats.size
+        return viz.optimise(imagePath).then(function(result){
+
+          expect(result).toEqual(imagePath)
+          expect(result).toFileExist()
+          return getStats(result)
+
+        })
 
       }).then( (newStats) => {
 
-        expect( newStats.size ).toBeLessThan( fileSizeBeforeOptim )
+        expect( newStats.size ).toBeLessThan( origFileSize )
 
-      }).catch( function(err) {
+      })
+      .catch(err => {
         expect(err).toBeUndefined()
-      }).then(done)
+      })
+      .then(done)
 
     });
 
@@ -95,6 +321,8 @@ describe('Viz', function() {
 
 
   describe('#getDimensions', () => {
+    const title = 'getDimensions'
+
     it('should exist', () => {
       expect(viz.getDimensions).not.toBeUndefined()
     })
@@ -104,16 +332,18 @@ describe('Viz', function() {
     })
 
     it('should resolve to {width, height, top, left}', (done) => {
-      let element = viz.driver.findElement(viz.Webdriver.By.css('#hplogo'))
-      viz.getDimensions(element).then((dimensions) => {
-        expect(dimensions).not.toBeUndefined()
-        expect(dimensions.width).toEqual(jasmine.any(Number))
-        expect(dimensions.height).toEqual(jasmine.any(Number))
-        expect(dimensions.top).toEqual(jasmine.any(Number))
-        expect(dimensions.left).toEqual(jasmine.any(Number))
-      }).catch((err) => {
-        expect(err).toBeUndefined()
-      }).then(done)
+      viz.capture(title).then(function(result) {
+        let element = viz.driver.findElement(viz.Webdriver.By.css('#hplogo'))
+        viz.getDimensions(element).then((dimensions) => {
+          expect(dimensions).not.toBeUndefined()
+          expect(dimensions.width).toEqual(jasmine.any(Number))
+          expect(dimensions.height).toEqual(jasmine.any(Number))
+          expect(dimensions.top).toEqual(jasmine.any(Number))
+          expect(dimensions.left).toEqual(jasmine.any(Number))
+        }).catch((err) => {
+          expect(err).toBeUndefined()
+        }).then(done)
+      })
     })
   })
 
@@ -141,21 +371,24 @@ describe('Viz', function() {
 
     it('should return an image cropped to the correct dimensions', (done) => {
       viz.crop(imagePath, outputPath, dimensions).then(() => {
-        let croppedImage = fs.createReadStream(outputPath).pipe(new PNG()).on('parsed', () => {
-          expect(croppedImage.width).toEqual(dimensions.width)
-          expect(croppedImage.height).toEqual(dimensions.height)
+        fs.createReadStream(outputPath).pipe(new PNG()).on('parsed', function() {
+          expect(this.width).toEqual(dimensions.width)
+          expect(this.height).toEqual(dimensions.height)
           done()
+        }).catch((err) => {
+          expect(err).toBeUndefined()
         })
       })
     })
   })
 
+
   describe('#compare', () => {
     let title = 'compare'
-    let samplePath = path.join(__dirname, 'support', 'google-alt.png')
-    let referencePath = path.join(__dirname, 'support', 'google.png')
+    let samplePath      = path.join(__dirname, 'support', 'google-alt.png')
+    let referencePath   = path.join(__dirname, 'support', 'google.png')
     let outputPathMatch = path.join(testPath, Viz.PATHS.DIFF, `${testTag}-${title}-match.png`)
-    let outputPathDiff = path.join(testPath, Viz.PATHS.DIFF, `${testTag}-${title}-diff.png`)
+    let outputPathDiff  = path.join(testPath, Viz.PATHS.DIFF, `${testTag}-${title}-diff.png`)
 
     it('should exist', () => {
       expect(viz.compare).not.toBeUndefined()
@@ -171,12 +404,11 @@ describe('Viz', function() {
       }).catch((err) => {
         expect(err).toBeUndefined()
       }).then(() => {
-        fs.stat(outputPathDiff, (err, stats) => {
-          expect(err).toBe(null)
-          expect(stats.isFile()).toEqual(true)
-          done()
-        })
+        expect( outputPathDiff ).toFileExist()
+      }).catch(function(err){
+        expect(err).toBeUndefined()
       })
+      .then(done)
     })
 
     it('should return "0" and not create a "diff" file if the images do match', (done) => {
@@ -185,50 +417,86 @@ describe('Viz', function() {
       }).catch((err) => {
         expect(err).toBeUndefined()
       }).then(() => {
-        fs.stat(outputPathMatch, (err, stats) => {
-          expect(err).not.toBe(null)
-          done()
-        })
+        expect( outputPathMatch ).not.toFileExist()
+        done()
       })
     })
   })
 
-  describe("#createPaths", function() {
-    it('should exist', function() {
-      expect(viz.createPaths).not.toBeUndefined()
-    });
 
-    it('should return a Promise', function() {
-      expect(viz.createPaths(testPath).constructor.name).toEqual('Promise')
-    });
+  describe('#visualise', function() {
 
-    it('should resolve to an Array of paths', function(done) {
-      viz.createPaths( testPath ).then(function(results) {
-        expect(results.constructor.name).toEqual('Array');
-        expect(results[0]).toEqual(path.join(testPath, Viz.PATHS.TMP))
-        expect(results[1]).toEqual(path.join(testPath, Viz.PATHS.NEW))
-        expect(results[2]).toEqual(path.join(testPath, Viz.PATHS.DIFF))
-        expect(results[3]).toEqual(path.join(testPath, Viz.PATHS.REF))
-        done();
-      });
-    });
+    const title     = 'visualise'
+    const tmpPath   = path.join(testPath, Viz.PATHS.TMP, `${testTag}-${title}.png`)
+    const newPath   = path.join(testPath, Viz.PATHS.NEW, `${testTag}-${title}.png`)
+    const refPath   = path.join(testPath, Viz.PATHS.REF, `${testTag}-${title}.png`)
 
-    it('should create a path for each of "Viz.PATHS"', (done) => {
-      Promise.all(Object.keys(Viz.PATHS).map((key) => {
-        let vizPath = path.join(testPath, Viz.PATHS[key])
-        return new Promise((resolve, reject) => {
-          fs.stat(vizPath, (err, stats) => {
-            expect(err).toEqual(null)
-            expect(stats.isDirectory()).toEqual(true)
-            resolve(true)
-          })
-        })
-      })).then(done)
+    it('should exist', () => {
+      expect(viz.visualise).not.toBeUndefined()
     })
-  })
+
+    it('should return a Promise', () => {
+      expect(viz.visualise() instanceof Promise).toEqual(true)
+    })
+
+    it('should save PNG to the "new" folder when reference image is missing', function(done) {
+      viz.createPaths( testPath ).then(function(results) {
+        // Make certain the "new" Image does not exist before we proceed:
+        fileDelete(tmpPath)
+        fileDelete(newPath)
+        fileDelete(refPath)
+        expect( tmpPath ).not.toFileExist()
+        expect( refPath ).not.toFileExist()
+        expect( newPath ).not.toFileExist()
+
+        return viz.visualise(title).then(function(result) {
+          // Unexpected outcome:
+          expect(result).toBe('a deliberate error message about NO_REFERENCE_ERROR instead')
+        }).catch(function(err){
+          // Expected outcome:
+          expect( '' + err ).toContain('NO_REFERENCE_ERROR')
+          expect( newPath  ).toFileExist()
+        })
+      })
+      .then(done)
+    });
+
+    it('should compare PNG with that in the "reference" folder', function(done) {
+      viz.createPaths( testPath ).then(function(results) {
+        fileDelete(refPath)
+        expect( refPath ).not.toFileExist()
+        expect( newPath ).toFileExist()
+        // Make certain the "new" Image is moved to the "reference" folder before we proceed:
+        return viz.move(newPath, refPath).then(function(){
+
+          expect( refPath ).toFileExist()
+          expect( newPath ).not.toFileExist()
+
+          return viz.visualise(title).then(function(result) {
+            console.log('RESULT OF VISUALISE',result)
+            expect( result  ).toBe(true)
+            expect( refPath ).toFileExist()
+          })
+          .catch(function(err){
+            // Unexpected outcome:
+            console.log('ERR',err)
+            expect(err).toBe('not an error from the visualise method')
+          })
+
+        }).catch(function(err){
+          // Unexpected outcome:
+          console.log(err)
+          expect(err).toBe('not an error from the move method')
+        })
+      })
+      .then(done)
+    });
+
+  });
+
 
   // Tidy up!
-  afterAll((done) => {
-    rimraf(testPath, fs, () => done())
-  })
+  // afterAll((done) => {
+  //   rimraf(testPath, fs, done)
+  // })
 });
