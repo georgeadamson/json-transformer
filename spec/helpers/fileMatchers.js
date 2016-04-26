@@ -58,6 +58,36 @@ var customFileMatchers = {
   },
 
 
+  toBeEmptyFile : function (util, customEqualityTesters) {
+
+    function fileSize(path){
+      try { return fs.statSync(path).size } catch(e){ return 0 }
+    }
+
+    return {
+      compare: function (actual, expected) {
+
+        var result = {}
+        var actualSize = fileSize(actual)
+        expected = 0
+
+
+        // result.pass = util.equals( fileExists(actual), expected, customEqualityTesters )
+        result.pass = actualSize === expected
+
+        if (result.pass) {
+          result.message = `Expected file to not be empty: (${actualSize} bytes) ${actual}` // For .not.toBeEmptyFile()
+        } else {
+          result.message = `Expected file to be empty: (${actualSize} bytes) ${actual}`
+        }
+
+        return result
+      }
+    }
+
+  },
+
+
   toFileContain : function (util, customEqualityTesters) {
 
     function fileContents(path){

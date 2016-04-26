@@ -9,10 +9,16 @@ import Imagemin   from 'imagemin'
 import webdriver  from 'selenium-webdriver';
 
 
-// Helper to DRY the spec code...
+// Helper to DRY the code...
+function folderExists(path){
+  try { return fs.statSync(path).isDirectory() } catch(e){ return false }
+}
 function fileExists(path){
   try { return fs.statSync(path).isFile() } catch(e){ return false }
 }
+// function fileCopy(fromPath, toPath){
+//   try { fs.createReadStream(fromPath).pipe(fs.createWriteStream(toPath)); return true } catch(e) { return false }
+// }
 
 
 class Viz {
@@ -53,39 +59,16 @@ class Viz {
     let newPath      = path.join(this.rootPath, Viz.PATHS.NEW,  `${this.tag}-${name}.png`)
     let diffPath     = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}-diff.png`)
     let diffPathCopy = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}.png`)
+    // Not sure why bind(this) is necessary here:
+    const clean      = this.clean.bind(this)
 
-    // Not sure why bind(this) is necessary here :(
-    cropIfNecessary  = cropIfNecessary.bind(this)
-    lookForRefImage  = lookForRefImage.bind(this)
-    raiseNewImageErr = raiseNewImageErr.bind(this)
-    raiseIfMismatch  = raiseIfMismatch.bind(this)
-    this.clean       = this.clean.bind(this)
-
-    return new Promise((resolve, reject) => {
-
-      this.capture(name)
-        .then( cropIfNecessary )
-        .then( lookForRefImage )
-        .then(hasReference => {
-          if (hasReference) {
-            raiseIfMismatch(tmpPath, refPath, diffPath)
-            .catch(reject)
-          } else {
-            raiseNewImageErr(tmpPath, newPath)
-            .catch(reject)
-          }
-        })
-        .catch(reject)
-
-    })
 
     // Move image from tmp to new folder and raise error to draw attention to missing reference image:
-    function raiseIfMismatch (tmpPath, newPath, diffPath){
+    const raiseIfMismatch = (tmpPath, newPath, diffPath) => {
       return this.compare(tmpPath, refPath, diffPath)
-        .then(this.clean)
-        .then((resultOfCompare) => {
+        .then(clean)
+        .then(resultOfCompare => {
           if(resultOfCompare > 0) {
-            console.log('RESULT OF COMPARE',resultOfCompare)
             throw `VISUAL_MATCH_FAIL: The pages and/or elements do not match. A diff has been created at:\n${diffPath}`
           } else {
             return true
@@ -94,20 +77,16 @@ class Viz {
     }
 
     // Move image from tmp to new folder and raise error to draw attention to missing reference image:
-    function raiseNewImageErr (tmpPath, newPath){
-
-      console.log('raiseNewImageErr: tmpPath exists:',fileExists(tmpPath))
-
+    const raiseNewImageErr = (tmpPath, newPath) => {
       return this.move(tmpPath, newPath)
-        .then(this.clean)
+        .then(clean)
         .then(result => {
-          console.log('throw',result)
           throw `NO_REFERENCE_ERROR: There is no reference image. Screenshot has been moved to:\n${newPath}`
         })
     }
 
     // Helper to make the promise chain more readable.
-    function cropIfNecessary (result) {
+    const cropIfNecessary = (result) => {
       return new Promise( (resolve, reject) => {
         if(element) {
           return this.getDimensions(element)
@@ -121,9 +100,25 @@ class Viz {
 
     // Helper to make the promise chain more readable.
     // Note the deliberate use of => so the function is created like fn.bind(this)
-    function lookForRefImage () {
+    const lookForRefImage = () => {
       return this.exists(refPath)
     }
+
+
+    // return new Promise((resolve, reject) => {
+
+      return this.capture(name)
+        .then( lookForRefImage )
+        .then( hasReference => {
+          if (hasReference) {
+            return raiseIfMismatch(tmpPath, refPath, diffPath)
+          } else {
+            return raiseNewImageErr(tmpPath, newPath)
+          }
+        })
+        // .catch(reject)
+
+    // })
 
   }
 
@@ -131,14 +126,13 @@ class Viz {
   capture(name) {
     return new Promise( (resolve, reject) => {
       this.driver.takeScreenshot().then( (data) => {
-        let image = data.replace(/^data:image\/png;base64,/,'')
-        let imagePath = path.join(this.rootPath, Viz.PATHS.TMP, `${this.tag}-${name}.png`)
-        fs.writeFile(imagePath, image, 'base64', (err) => {
+        const image = data.replace(/^data:image\/png;base64,/,'')
+        const tmpPath = path.join(this.rootPath, Viz.PATHS.TMP, `${this.tag}-${name}.png`)
+        fs.writeFile(tmpPath, image, 'base64', err => {
           if(err) reject(err)
-          resolve(imagePath)
+          else resolve(tmpPath)
         })
       })
-      .catch(reject)
     })
   }
 
@@ -146,7 +140,7 @@ class Viz {
     return new Promise((resolve, reject) => {
       PNGCrop.cropToStream(inputPath, dimensions, (err, stream) => {
         if(err) reject(err)
-        stream.pipe(fs.createWriteStream(outputPath)).on('finish', () => resolve(true))
+        else stream.pipe(fs.createWriteStream(outputPath)).on( 'finish', () => resolve(true) )
       })
     })
   }
@@ -169,23 +163,24 @@ class Viz {
     })
   }
 
-  compare(screenshot, reference, diff) {
-    return Promise.all([screenshot, reference].map((image) => {
-        return new Promise((resolve, reject) => {
-          let imageObj = fs.createReadStream(image).pipe(new PNG()).on('parsed', (data) => {
-            resolve(imageObj);
-          })
+  compare(screenshotPath, refPath, diffPath, threshold = 0.1) {
+    return Promise.all([screenshotPath, refPath].map((imagePath) => {
+      return new Promise((resolve, reject) => {
+        fs.createReadStream(imagePath).pipe(new PNG()).on('parsed', function (data) {
+          resolve(this);
         })
-    })).then((images) => {
-      let width = images[0].width
-      let height = images[0].height
-      let diffOutput = new PNG({width: width, height: height})
+      })
+    }))
+    .then((images) => {
+      let width      = images[0].width
+      let height     = images[0].height
+      let diffOutput = new PNG({ width: width, height: height })
 
       return new Promise((resolve, reject) => {
-        let result = pixelmatch(images[0].data, images[1].data, diffOutput.data, width, height, {threshold: 0.1})
+        let result = pixelmatch(images[0].data, images[1].data, diffOutput.data, width, height, { threshold: threshold })
 
         if(result > 0) {
-          diffOutput.pack().pipe(fs.createWriteStream(diff)).on('finish', () => {
+          diffOutput.pack().pipe(fs.createWriteStream(diffPath)).on('finish', () => {
             resolve(result)
           })
         } else {
@@ -245,6 +240,13 @@ class Viz {
           else resolve(imagePath)
         });
     })
+  }
+
+  // Helper to make the promise chain more readable.
+  // Note the deliberate use of => so the function is created like fn.bind(this)
+  _lookForRefImage (name) {
+    const refPath = path.join(this.rootPath, Viz.PATHS.REF,  `${this.tag}-${name}.png`)
+    return this.exists(refPath)
   }
 
 }

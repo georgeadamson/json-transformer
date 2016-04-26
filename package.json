@@ -20,6 +20,7 @@
     "babel-register": "^6.4.3",
     "express": "^4.13.4",
     "jasmine": "^2.4.1",
+    "node-fs-extra": "^0.8.1",
     "selenium-webdriver": "^2.48.2"
   },
   "dependencies": {

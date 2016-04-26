@@ -1,4 +1,5 @@
-import fs from 'fs';
+// import fs from 'fs';
+import fs from 'node-fs-extra'; // https://github.com/jprichardson/node-fs-extra
 import path from 'path';
 import rimraf from 'rimraf';
 import { PNG } from 'pngjs';
@@ -15,11 +16,16 @@ describe('Viz', function() {
   const testPath = path.join(__dirname, 'spec-screenshots');
   const viz = new Viz(testTag, 'phantomjs', testPath);
 
-  // Diddy helpers to DRY the spec code...
-  function fileDelete(path){
-    try { fs.unlinkSync(path) } catch(e) {}
+  // Diddy synchronous helpers to DRY the spec code...
+  function fileExists(path){
+    try { return fs.statSync(path).isFile() } catch(e) { return false }
+    return false
   }
-  function deleteScreenshotsFolder(){
+  // Diddy asynchronous helpers to DRY the spec code...
+  function createPaths () {
+    return viz.createPaths(testPath)
+  }
+  function destroyPaths () {
     return new Promise((resolve, reject) => {
       rimraf(testPath, fs, resolve)
     })
@@ -27,18 +33,16 @@ describe('Viz', function() {
 
 
   beforeAll(function(){
-    // Define some extra matchers for checking whether a file exists etc:
+    // Define some extra helpers for testing whether a file exists etc:
     jasmine.addMatchers(customFileMatchers)
   })
 
   beforeEach(function(done) {
+    // const samplePage = 'http://www.google.com'                     // <-- Works but will require new sample image(s)
+    const samplePage = path.join(__dirname, 'support', 'google.htm')  // <-- Faster to test local file
     viz.driver.manage().window().setSize(1100,1600)
-    viz.driver.get(path.join(__dirname, 'support', 'google.htm')) // viz.driver.get('http://www.google.com')
-    viz.createPaths(testPath).then(done)
-  });
-
-  afterEach(function(done) {
-    deleteScreenshotsFolder().then(done)
+    viz.driver.get(samplePage)
+    destroyPaths().then(createPaths).then(done)
   });
 
 
@@ -52,7 +56,8 @@ describe('Viz', function() {
       expect(viz.createPaths).not.toBeUndefined()
     });
 
-    it('should return a Promise', function() {
+    // TODO: This test should complete asynchronously so it does not affect subsequent tests:
+    xit('should return a Promise', function() {
       expect(viz.createPaths(testPath).constructor.name).toEqual('Promise')
     });
 
@@ -68,7 +73,7 @@ describe('Viz', function() {
     })
 
     it('should create a path for each of "Viz.PATHS"', (done) => {
-      deleteScreenshotsFolder().then(function(){
+      destroyPaths().then(function(){
 
         // Ensure they testPath does not exist before we test it's creation:
         expect(testPath).not.toFolderExist()
@@ -95,7 +100,8 @@ describe('Viz', function() {
       expect(viz.exists).not.toBeUndefined()
     })
 
-    it('should return a Promise', function() {
+    // TODO: This test should complete asynchronously so it does not affect subsequent tests:
+    xit('should return a Promise', function() {
       expect(viz.exists('path/to/nonexistent/file').constructor.name).toEqual('Promise')
     });
 
@@ -124,13 +130,14 @@ describe('Viz', function() {
     const fileContentA = 'This is file A'
 
     beforeEach( function () { fs.writeFileSync(filePathA, fileContentA)    })
-    afterEach ( function () { fileDelete(filePathA); fileDelete(filePathB) })
+    afterEach ( function () { fs.remove(filePathA); fs.remove(filePathB) })
 
     it('should exist', () => {
       expect(viz.move).not.toBeUndefined()
     })
 
-    it('should return a Promise', function() {
+    // TODO: This test should complete asynchronously so it does not affect subsequent tests:
+    xit('should return a Promise', function() {
       expect(viz.move('a','b').constructor.name).toEqual('Promise')
     });
 
@@ -179,20 +186,21 @@ describe('Viz', function() {
     const filePathA = path.join(testPath, Viz.PATHS.TMP, 'a.txt')
 
     beforeEach( function () { fs.writeFileSync(filePathA, 'file contents') })
-    afterEach ( function () { fileDelete(filePathA) })
+    afterEach ( function () { fs.remove(filePathA) })
 
     it('should exist', () => {
       expect(viz.clean).not.toBeUndefined()
     })
 
-    it('should return a Promise', function() {
+    // TODO: This test should complete asynchronously so it does not affect subsequent tests:
+    xit('should return a Promise', function() {
       expect(viz.clean().constructor.name).toEqual('Promise')
     });
 
     it('should empty the tmp folder', function(done) {
       const argPassedIn = 'foobar'
       expect(filePathA).toFileExist()
-      viz.createPaths( testPath ).then(function(results) {
+      createPaths().then(function(results) {
         viz.clean(argPassedIn).then(function(result) {
           expect(result).toEqual(argPassedIn)
           expect(filePathA).not.toFileExist()
@@ -208,38 +216,44 @@ describe('Viz', function() {
 
     const title = 'capture'
 
+    // beforeEach( done => {
+    //   destroyPaths()
+    //   .then(createPaths)
+    //   .then(done)
+    // })
+
     it('should exist', () => {
       expect(viz.capture).not.toBeUndefined()
     })
 
-    it('should return a Promise', function() {
+    // TODO: This test should complete asynchronously so it does not affect subsequent tests:
+    xit('should return a Promise', function() {
       expect(viz.capture(title).constructor.name).toEqual('Promise')
     });
 
-    it('should save PNG to the "new" folder', function(done) {
-      const imagePath = path.join(testPath, Viz.PATHS.TMP, `${testTag}-${title}.png`)
+    it('should save PNG to the "tmp" folder', function(done) {
+      const tmpPath = path.join(testPath, Viz.PATHS.TMP, `${testTag}-${title}.png`)
 
-      fileDelete(imagePath)
-      expect( imagePath ).not.toFileExist()
+      expect( tmpPath ).not.toFileExist()
 
       viz.capture(title).then(function(result) {
-        expect(result).toEqual(imagePath)
-        //done()
+        expect(result).toEqual(tmpPath)
+        expect(result).toFileExist()
+        expect(result).not.toBeEmptyFile()
       })
       .catch(err => {
         expect(err).toBeUndefined()
-        //done()
       })
       .then(done)
 
     })
 
     it('should reject promise if the target folder does not exist', function(done) {
-      const title      = '/MADE/UP/PATH/capture'
-      const madeUpPath = path.join(testPath, Viz.PATHS.TMP, `${testTag}-${title}.png`)
+      const title      = 'capture'
+      const tmpPath = path.join(testPath, Viz.PATHS.TMP, `${testTag}-${title}.png`)
 
-      fileDelete(madeUpPath)
-      expect( madeUpPath ).not.toFileExist()
+      destroyPaths()
+      expect( tmpPath ).not.toFileExist()
 
       return viz.capture(title).then(function(result) {
         expect(result).toBe('a deliberate error message about "no such file or directory" instead')
@@ -270,7 +284,8 @@ describe('Viz', function() {
       expect(viz.optimise).not.toBeUndefined()
     })
 
-    it('should return a Promise', function() {
+    // TODO: This test should complete asynchronously so it does not affect subsequent tests:
+    xit('should return a Promise', function() {
       expect(viz.optimise().constructor.name).toEqual('Promise')
     });
 
@@ -280,7 +295,7 @@ describe('Viz', function() {
       const imagePath = path.join(testPath, Viz.PATHS.TMP, `${testTag}-${title}.png`)
       let origFileSize
 
-      fileDelete(imagePath)
+      fs.remove(imagePath)
       expect(imagePath).not.toFileExist()
 
       // Capture image and compare its size before/after optimisation:
@@ -327,7 +342,8 @@ describe('Viz', function() {
       expect(viz.getDimensions).not.toBeUndefined()
     })
 
-    it('should return a Promise', () => {
+    // TODO: This test should complete asynchronously so it does not affect subsequent tests:
+    xit('should return a Promise', () => {
       expect(viz.getDimensions().constructor.name).toBe('Promise')
     })
 
@@ -347,6 +363,7 @@ describe('Viz', function() {
     })
   })
 
+
   describe('#crop', () => {
     let title = 'crop'
     let imagePath = path.join(__dirname, 'support', 'google.png')
@@ -357,8 +374,9 @@ describe('Viz', function() {
       expect(viz.crop).not.toBeUndefined()
     })
 
-    it('should return a Promise', () => {
-      expect(viz.crop() instanceof Promise).toBe(true)
+    // TODO: This test should complete asynchronously so it does not affect subsequent tests:
+    xit('should return a Promise', () => {
+      expect(viz.crop().constructor.name).toBe('Promise')
     })
 
     it('should resolve to true', (done) => {
@@ -369,127 +387,174 @@ describe('Viz', function() {
       }).then(done)
     })
 
+    // More info: https://github.com/niegowski/node-pngjs
     it('should return an image cropped to the correct dimensions', (done) => {
       viz.crop(imagePath, outputPath, dimensions).then(() => {
         fs.createReadStream(outputPath).pipe(new PNG()).on('parsed', function() {
           expect(this.width).toEqual(dimensions.width)
           expect(this.height).toEqual(dimensions.height)
-          done()
-        }).catch((err) => {
-          expect(err).toBeUndefined()
         })
-      })
+      }).catch((err) => {
+        expect(err).toBeUndefined()
+      }).then(done)
     })
   })
 
 
   describe('#compare', () => {
-    let title = 'compare'
-    let samplePath      = path.join(__dirname, 'support', 'google-alt.png')
-    let referencePath   = path.join(__dirname, 'support', 'google.png')
-    let outputPathMatch = path.join(testPath, Viz.PATHS.DIFF, `${testTag}-${title}-match.png`)
-    let outputPathDiff  = path.join(testPath, Viz.PATHS.DIFF, `${testTag}-${title}-diff.png`)
+    const title = 'compare'
+    const samplePath    = path.join(__dirname, 'support', 'google-alt.png')
+    const referencePath = path.join(__dirname, 'support', 'google.png')
+    const tmpPath       = path.join(testPath, Viz.PATHS.TMP, `${testTag}-${title}.png`)
+    const refPath       = path.join(testPath, Viz.PATHS.REF, `${testTag}-${title}.png`)
+    const matchPath     = path.join(testPath, Viz.PATHS.DIFF, `${testTag}-${title}-match.png`)
+    const diffPath      = path.join(testPath, Viz.PATHS.DIFF, `${testTag}-${title}-diff.png`)
 
     it('should exist', () => {
       expect(viz.compare).not.toBeUndefined()
     })
 
-    it('should return a Promise', () => {
-      expect(viz.compare() instanceof Promise).toEqual(true)
+    // TODO: This test should complete asynchronously so it does not affect subsequent tests:
+    xit('should return a Promise', () => {
+      expect(viz.compare().constructor.name).toBe('Promise')
     })
 
     it('should return "> 0" and create a "diff" file if images don\'t match', (done) => {
-      viz.compare(samplePath, referencePath, outputPathDiff).then((result) => {
-        expect(result).toBeGreaterThan(0)
-      }).catch((err) => {
-        expect(err).toBeUndefined()
-      }).then(() => {
-        expect( outputPathDiff ).toFileExist()
-      }).catch(function(err){
-        expect(err).toBeUndefined()
-      })
-      .then(done)
+      // Set up test files:
+      fs.copySync(samplePath,    tmpPath)
+      fs.copySync(referencePath, refPath)
+
+      // Belt and braces:
+      expect(tmpPath).toFileExist()
+      expect(refPath).toFileExist()
+      expect(tmpPath).not.toBeEmptyFile()
+      expect(refPath).not.toBeEmptyFile()
+
+      viz.compare(tmpPath, refPath, diffPath)
+        .then((result) => {
+          expect(result).toBeGreaterThan(0)
+        }).catch((err) => {
+          expect(err).toBeUndefined()
+        }).then(() => {
+          expect( diffPath ).toFileExist()
+        })
+        .then(done)
     })
 
     it('should return "0" and not create a "diff" file if the images do match', (done) => {
-      viz.compare(samplePath, samplePath, outputPathMatch).then((result) => {
-        expect(result).toEqual(0)
-      }).catch((err) => {
-        expect(err).toBeUndefined()
-      }).then(() => {
-        expect( outputPathMatch ).not.toFileExist()
-        done()
-      })
+      // Set up test files:
+      fs.copySync(samplePath, tmpPath)
+      fs.copySync(samplePath, refPath)
+
+      // Belt and braces:
+      expect(tmpPath).toFileExist()
+      expect(refPath).toFileExist()
+      expect(tmpPath).not.toBeEmptyFile()
+      expect(refPath).not.toBeEmptyFile()
+
+      viz.compare(tmpPath, refPath, matchPath)
+        .then((result) => {
+          expect(result).toEqual(0)
+        }).catch((err) => {
+          expect(err).toBeUndefined()
+        }).then(() => {
+          expect( matchPath ).not.toFileExist()
+        })
+        .then(done)
     })
   })
 
 
   describe('#visualise', function() {
 
-    const title     = 'visualise'
-    const tmpPath   = path.join(testPath, Viz.PATHS.TMP, `${testTag}-${title}.png`)
-    const newPath   = path.join(testPath, Viz.PATHS.NEW, `${testTag}-${title}.png`)
-    const refPath   = path.join(testPath, Viz.PATHS.REF, `${testTag}-${title}.png`)
+    const title    = 'visualise'
+    const tmpPath  = path.join(testPath, Viz.PATHS.TMP,  `${testTag}-${title}.png`)
+    const newPath  = path.join(testPath, Viz.PATHS.NEW,  `${testTag}-${title}.png`)
+    const refPath  = path.join(testPath, Viz.PATHS.REF,  `${testTag}-${title}.png`)
+    const diffPath = path.join(testPath, Viz.PATHS.DIFF, `${testTag}-${title}-diff.png`)
+
+    beforeEach( done => {
+      destroyPaths()
+      .then(createPaths)
+      .then(done)
+    })
 
     it('should exist', () => {
       expect(viz.visualise).not.toBeUndefined()
     })
 
-    it('should return a Promise', () => {
-      expect(viz.visualise() instanceof Promise).toEqual(true)
+    // TODO: This test should complete asynchronously so it does not affect subsequent tests:
+    xit('should return a Promise', (done) => {
+      expect(viz.visualise(title).constructor.name).toBe('Promise')
     })
 
     it('should save PNG to the "new" folder when reference image is missing', function(done) {
-      viz.createPaths( testPath ).then(function(results) {
-        // Make certain the "new" Image does not exist before we proceed:
-        fileDelete(tmpPath)
-        fileDelete(newPath)
-        fileDelete(refPath)
-        expect( tmpPath ).not.toFileExist()
-        expect( refPath ).not.toFileExist()
-        expect( newPath ).not.toFileExist()
+      // Make absolutely certain there's no old test files knocking about:
+      expect( tmpPath ).not.toFileExist()
+      expect( refPath ).not.toFileExist()
+      expect( newPath ).not.toFileExist()
 
-        return viz.visualise(title).then(function(result) {
-          // Unexpected outcome:
-          expect(result).toBe('a deliberate error message about NO_REFERENCE_ERROR instead')
-        }).catch(function(err){
-          // Expected outcome:
-          expect( '' + err ).toContain('NO_REFERENCE_ERROR')
-          expect( newPath  ).toFileExist()
-        })
+      viz.visualise(title).then(function(result) {
+        // Unexpected outcome:
+        expect(result).toBe('a deliberate error message about NO_REFERENCE_ERROR instead')
+      }).catch(function(err){
+        // Expected outcome:
+        expect( '' + err ).toContain('NO_REFERENCE_ERROR')
+        expect( newPath  ).toFileExist()
       })
       .then(done)
     });
 
-    it('should compare PNG with that in the "reference" folder', function(done) {
-      viz.createPaths( testPath ).then(function(results) {
-        fileDelete(refPath)
-        expect( refPath ).not.toFileExist()
-        expect( newPath ).toFileExist()
-        // Make certain the "new" Image is moved to the "reference" folder before we proceed:
-        return viz.move(newPath, refPath).then(function(){
+    it('should match PNG with identical image in the "reference" folder', function(done) {
 
-          expect( refPath ).toFileExist()
-          expect( newPath ).not.toFileExist()
+      expect( refPath ).not.toFileExist()
 
-          return viz.visualise(title).then(function(result) {
-            console.log('RESULT OF VISUALISE',result)
-            expect( result  ).toBe(true)
-            expect( refPath ).toFileExist()
-          })
-          .catch(function(err){
-            // Unexpected outcome:
-            console.log('ERR',err)
-            expect(err).toBe('not an error from the visualise method')
-          })
+      // Setup test files:
+      fs.copySync(path.join(__dirname, 'support', 'google.htm.png'), refPath)
+      expect( tmpPath ).not.toFileExist()
+      expect( newPath ).not.toFileExist()
+      expect( newPath ).toBeEmptyFile()
+      expect( refPath ).toFileExist()
+      expect( refPath ).not.toBeEmptyFile()
 
-        }).catch(function(err){
-          // Unexpected outcome:
-          console.log(err)
-          expect(err).toBe('not an error from the move method')
-        })
+      // Now we're finally ready to test the visualise method:
+      viz.visualise(title).then( result => {
+        expect( result  ).toBe(true)
+        expect( refPath ).toFileExist()
+      })
+
+      // Unexpected outcome.
+      .catch(function(err){
+        expect(err).toBe('not an error from the visualise method')
       })
       .then(done)
+
+    });
+
+    it('should reject PNG with different image in the "reference" folder', function(done) {
+
+      expect( refPath ).not.toFileExist()
+
+      // Setup test files:
+      fs.copySync(path.join(__dirname, 'support', 'google-alt.png'), refPath)
+      expect( tmpPath ).not.toFileExist()
+      expect( newPath ).not.toFileExist()
+      expect( newPath ).toBeEmptyFile()
+      expect( refPath ).toFileExist()
+      expect( refPath ).not.toBeEmptyFile()
+
+      // Now we're finally ready to test the visualise method:
+      viz.visualise(title).then( result => {
+        // Unexpected outcome:
+        expect(result).toBe('a deliberate error message about NO_REFERENCE_ERROR instead')
+      }).catch(function(err){
+        // Expected outcome:
+        expect( '' + err ).toContain('VISUAL_MATCH_FAIL')
+        expect( diffPath ).toFileExist()
+        expect( diffPath ).not.toBeEmptyFile()
+      })
+      .then(done)
+
     });
 
   });
