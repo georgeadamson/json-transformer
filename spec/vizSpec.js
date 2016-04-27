@@ -4,12 +4,39 @@ import path from 'path';
 import rimraf from 'rimraf';
 import { PNG } from 'pngjs';
 import customFileMatchers from './helpers/fileMatchers';
+import Webdriver  from 'selenium-webdriver';
 
 // This is what we're testing:
 import Viz from '../src/index.js';
 
-
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 30000
+
+
+// Define our own custom driverFactory() method to DRY the subsequent spec code:
+Viz.driverFactory = function(driver){
+
+  // http://selenium.googlecode.com/git/docs/api/javascript/class_webdriver_Capabilities.html
+  var DRIVERS = 'chrome,firefox,ie,ipad,iphone,opera,phantomjs,safari'.split(',')
+
+  // Init Selenium webdriver if an actual driver instance was not supplied:
+  if( typeof driver === 'string' ){
+    if( ~DRIVERS.indexOf(driver) ){
+      const capabilities = Webdriver.Capabilities[driver]()
+      this.Webdriver = Webdriver
+      return new Webdriver.Builder().withCapabilities(capabilities).build();
+    } else {
+      throw `INVALID_WEBDRIVER_NAME: Unable to create a Webdriver because "${driver}" is not in the list of valid Webdrivers: "${DRIVERS}".`
+    }
+  }
+
+}
+
+// Helper to return a dom element if a selector has been provided:
+Viz.findElement = function (elem) {
+  return (typeof elem === 'string') ? this.driver.findElement(Webdriver.By.css(elem)) : elem
+}
+
+
 
 describe('Viz', function() {
   const testTag  = 'test'

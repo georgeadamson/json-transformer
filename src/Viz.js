@@ -6,7 +6,6 @@ import pixelmatch from 'pixelmatch'
 import { PNG }    from 'pngjs'
 import PNGCrop    from 'png-crop'
 import Imagemin   from 'imagemin'
-import Webdriver  from 'selenium-webdriver';
 
 
 class Viz {
@@ -18,37 +17,37 @@ class Viz {
     REF  : 'reference'
   };
 
-  // http://selenium.googlecode.com/git/docs/api/javascript/class_webdriver_Capabilities.html
-  static DRIVERS = 'chrome,firefox,ie,ipad,iphone,opera,phantomjs,safari'.split(',')
+  // Optionally replace this with your own Viz.driverFactory() method before you create new Viz() instance:
+  static driverFactory = undefined
 
 
-  constructor(tag, driver = 'phantomjs', rootPath) {
+  constructor(tag, driver, rootPath = 'viz-screenshots') {
 
-    // Init Selenium webdriver if an instance was not supplied:
-    if( typeof driver === 'string' ){
-      if( ~Viz.DRIVERS.indexOf(driver) ){
-        const capabilities = Webdriver.Capabilities[driver]()
-        driver = new Webdriver.Builder().withCapabilities(capabilities).build();
-      } else {
-        throw `INVALID_WEBDRIVER_NAME: Unable to create a Selenium Webdriver named "${driver}".`
-      }
+    // Optionally init driver via Viz.driverFactory method if defined:
+    // Eg: It could create a Selenium Webdriver instance when you call "new Viz(tag, 'phantomjs', path)"
+    if( Viz.driverFactory ){
+      driver = Viz.driverFactory.call(this, driver)
     }
 
+    // Optionally expose a findElement method if defined: Eg: this.findElement('#foobar')
+    this.findElement = ( Viz.findElement || (element => element) ).bind(this)
+
+    // Expose Webdriver instance via convenience property, eg: viz.driver.get('http://www.foobar.com')
+    this.driver = driver
     this.tag = tag
-    this.driver = driver        // To expose Selenium Webdriver instance, eg: viz.driver.get('http://www.foobar.com')
-    this.Webdriver = Webdriver  // To expose Selenium Webdriver convenience methods, eg: viz.Webdriver.By.css(...)
     this.rootPath = rootPath
     this.createPaths()
   }
 
+
   visualise(name, element = false) {
-    let tmpPath       = path.join(this.rootPath, Viz.PATHS.TMP,  `${this.tag}-${name}.png`)
-    let refPath       = path.join(this.rootPath, Viz.PATHS.REF,  `${this.tag}-${name}.png`)
-    let newPath       = path.join(this.rootPath, Viz.PATHS.NEW,  `${this.tag}-${name}.png`)
-    let diffPath      = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}-diff.png`)
-    let diffPathCopy  = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}.png`)
+    let tmpPath      = path.join(this.rootPath, Viz.PATHS.TMP,  `${this.tag}-${name}.png`)
+    let refPath      = path.join(this.rootPath, Viz.PATHS.REF,  `${this.tag}-${name}.png`)
+    let newPath      = path.join(this.rootPath, Viz.PATHS.NEW,  `${this.tag}-${name}.png`)
+    let diffPath     = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}-diff.png`)
+    let diffPathCopy = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}.png`)
     // Seems to be necessary to bind(this) to prevent error reading this.rootPath:
-    const clean       = this.clean.bind(this)
+    const clean      = this.clean.bind(this)
 
 
     // Compare tmpPath against refPath and reject if different:
@@ -227,12 +226,6 @@ class Viz {
           else resolve(imagePath)
         });
     })
-  }
-
-
-  // Helper to return a dom element if a selector has been provided:
-  findElement (elem) {
-    return (typeof elem === 'string') ? this.driver.findElement(this.Webdriver.By.css(elem)) : elem
   }
 
 }
