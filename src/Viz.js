@@ -51,7 +51,7 @@ class Viz {
     const clean      = this.clean.bind(this)
 
 
-    // Move image from tmp to new folder and raise error to draw attention to missing reference image:
+    // Compare tmpPath against refPath and reject if different:
     const raiseIfMismatch = (tmpPath, newPath, diffPath) => {
       return this.compare(tmpPath, refPath, diffPath)
         .then(clean)
@@ -93,6 +93,7 @@ class Viz {
     }
 
 
+    // Capture and compare new screenshot:
     return this.capture(name)
       .then( cropIfNecessary )
       .then( lookForRefImage )
