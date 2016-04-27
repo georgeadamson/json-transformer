@@ -22,7 +22,6 @@ Viz.driverFactory = function(driver){
   if( typeof driver === 'string' ){
     if( ~DRIVERS.indexOf(driver) ){
       const capabilities = Webdriver.Capabilities[driver]()
-      this.Webdriver = Webdriver
       return new Webdriver.Builder().withCapabilities(capabilities).build();
     } else {
       throw `INVALID_WEBDRIVER_NAME: Unable to create a Webdriver because "${driver}" is not in the list of valid Webdrivers: "${DRIVERS}".`
@@ -380,7 +379,7 @@ describe('Viz', function() {
 
     it('should resolve to {width, height, top, left}', (done) => {
       viz.capture(title).then(function(result) {
-        let element = viz.driver.findElement(viz.Webdriver.By.css('#hplogo'))
+        let element = viz.findElement('.jsb')
         viz.getDimensions(element).then((dimensions) => {
           expect(dimensions).not.toBeUndefined()
           expect(dimensions.width).toEqual(jasmine.any(Number))
@@ -594,7 +593,7 @@ describe('Viz', function() {
       expect( refPath ).not.toFileExist()
       expect( newPath ).not.toFileExist()
 
-      const element = viz.driver.findElement(viz.Webdriver.By.css('.jsb'))
+      const element = viz.findElement('.jsb')
 
       viz.visualise(title, element).then(function(result) {
         // Unexpected outcome:
@@ -619,7 +618,7 @@ describe('Viz', function() {
       expect( refPath ).toFileExist()
       expect( refPath ).not.toBeEmptyFile()
 
-      const element = viz.driver.findElement(viz.Webdriver.By.css('.jsb'))
+      const element = viz.findElement('.jsb')
 
       // Now we're finally ready to test the visualise method:
       viz.visualise(title, element).then( result => {
@@ -647,7 +646,7 @@ describe('Viz', function() {
       expect( refPath ).toFileExist()
       expect( refPath ).not.toBeEmptyFile()
 
-      const element = viz.driver.findElement(viz.Webdriver.By.css('.jsb'))
+      const element = viz.findElement('.jsb')
 
       // Now we're finally ready to test the visualise method:
       viz.visualise(title, element).then( result => {
@@ -669,7 +668,7 @@ describe('Viz', function() {
       expect( refPath ).not.toFileExist()
       expect( newPath ).not.toFileExist()
 
-      // const element = viz.driver.findElement(viz.Webdriver.By.css('.jsb'))
+      // const element = viz.findElement('.jsb')
       const element = '.jsb'
 
       viz.visualise(title, element).then(function(result) {
