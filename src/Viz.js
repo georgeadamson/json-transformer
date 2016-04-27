@@ -6,7 +6,7 @@ import pixelmatch from 'pixelmatch'
 import { PNG }    from 'pngjs'
 import PNGCrop    from 'png-crop'
 import Imagemin   from 'imagemin'
-import webdriver  from 'selenium-webdriver';
+import Webdriver  from 'selenium-webdriver';
 
 
 class Viz {
@@ -27,28 +27,28 @@ class Viz {
     // Init Selenium webdriver if an instance was not supplied:
     if( typeof driver === 'string' ){
       if( ~Viz.DRIVERS.indexOf(driver) ){
-        const capabilities = webdriver.Capabilities[driver]()
-        driver = new webdriver.Builder().withCapabilities(capabilities).build();
+        const capabilities = Webdriver.Capabilities[driver]()
+        driver = new Webdriver.Builder().withCapabilities(capabilities).build();
       } else {
-        throw `INVALID_WEBDRIVER_NAME: Unable to create a Selenium webdriver named "${driver}".`
+        throw `INVALID_WEBDRIVER_NAME: Unable to create a Selenium Webdriver named "${driver}".`
       }
     }
 
     this.tag = tag
-    this.driver = driver        // To expose Selenium webdriver instance, eg: viz.driver.get('http://www.foobar.com')
-    this.Webdriver = webdriver  // To expose Selenium webdriver convenience methods, eg: viz.Webdriver.By.css(...)
+    this.driver = driver        // To expose Selenium Webdriver instance, eg: viz.driver.get('http://www.foobar.com')
+    this.Webdriver = Webdriver  // To expose Selenium Webdriver convenience methods, eg: viz.Webdriver.By.css(...)
     this.rootPath = rootPath
     this.createPaths()
   }
 
   visualise(name, element = false) {
-    let tmpPath      = path.join(this.rootPath, Viz.PATHS.TMP,  `${this.tag}-${name}.png`)
-    let refPath      = path.join(this.rootPath, Viz.PATHS.REF,  `${this.tag}-${name}.png`)
-    let newPath      = path.join(this.rootPath, Viz.PATHS.NEW,  `${this.tag}-${name}.png`)
-    let diffPath     = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}-diff.png`)
-    let diffPathCopy = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}.png`)
+    let tmpPath       = path.join(this.rootPath, Viz.PATHS.TMP,  `${this.tag}-${name}.png`)
+    let refPath       = path.join(this.rootPath, Viz.PATHS.REF,  `${this.tag}-${name}.png`)
+    let newPath       = path.join(this.rootPath, Viz.PATHS.NEW,  `${this.tag}-${name}.png`)
+    let diffPath      = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}-diff.png`)
+    let diffPathCopy  = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}.png`)
     // Seems to be necessary to bind(this) to prevent error reading this.rootPath:
-    const clean      = this.clean.bind(this)
+    const clean       = this.clean.bind(this)
 
 
     // Compare tmpPath against refPath and reject if different:
@@ -78,6 +78,7 @@ class Viz {
     const cropIfNecessary = (result) => {
       return new Promise( (resolve, reject) => {
         if(element) {
+          element = this.findElement(element)
           return this.getDimensions(element)
             .then(dimensions => this.crop(tmpPath, tmpPath, dimensions))
             .then(() => resolve(tmpPath))
@@ -133,6 +134,7 @@ class Viz {
   getDimensions(element) {
     let left, top, width, height;
     return new Promise((resolve, reject) => {
+      element = this.findElement(element)
       element.getLocation().then((location) => {
         left = location.x
         top = location.y
@@ -225,6 +227,12 @@ class Viz {
           else resolve(imagePath)
         });
     })
+  }
+
+
+  // Helper to return a dom element if a selector has been provided:
+  findElement (elem) {
+    return (typeof elem === 'string') ? this.driver.findElement(this.Webdriver.By.css(elem)) : elem
   }
 
 }

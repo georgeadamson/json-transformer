@@ -636,6 +636,26 @@ describe('Viz', function() {
 
     });
 
+    it('should also allow an element to be specified vis a selector string', function(done) {
+      // Make absolutely certain there's no old test files knocking about:
+      expect( tmpPath ).not.toFileExist()
+      expect( refPath ).not.toFileExist()
+      expect( newPath ).not.toFileExist()
+
+      // const element = viz.driver.findElement(viz.Webdriver.By.css('.jsb'))
+      const element = '.jsb'
+
+      viz.visualise(title, element).then(function(result) {
+        // Unexpected outcome:
+        expect(result).toBe('a deliberate error message about NO_REFERENCE_ERROR instead')
+      }).catch(function(err){
+        // Expected outcome:
+        expect( '' + err ).toContain('NO_REFERENCE_ERROR')
+        expect( newPath  ).toFileExist()
+      })
+      .then(done)
+    });
+
   });
 
 });
