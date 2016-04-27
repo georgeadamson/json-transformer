@@ -9,18 +9,6 @@ import Imagemin   from 'imagemin'
 import webdriver  from 'selenium-webdriver';
 
 
-// Helper to DRY the code...
-function folderExists(path){
-  try { return fs.statSync(path).isDirectory() } catch(e){ return false }
-}
-function fileExists(path){
-  try { return fs.statSync(path).isFile() } catch(e){ return false }
-}
-// function fileCopy(fromPath, toPath){
-//   try { fs.createReadStream(fromPath).pipe(fs.createWriteStream(toPath)); return true } catch(e) { return false }
-// }
-
-
 class Viz {
 
   static PATHS = {
@@ -59,7 +47,7 @@ class Viz {
     let newPath      = path.join(this.rootPath, Viz.PATHS.NEW,  `${this.tag}-${name}.png`)
     let diffPath     = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}-diff.png`)
     let diffPathCopy = path.join(this.rootPath, Viz.PATHS.DIFF, `${this.tag}-${name}.png`)
-    // Not sure why bind(this) is necessary here:
+    // Seems to be necessary to bind(this) to prevent error reading this.rootPath:
     const clean      = this.clean.bind(this)
 
 
@@ -79,6 +67,7 @@ class Viz {
     // Move image from tmp to new folder and raise error to draw attention to missing reference image:
     const raiseNewImageErr = (tmpPath, newPath) => {
       return this.move(tmpPath, newPath)
+        .then(this.optimise)
         .then(clean)
         .then(result => {
           throw `NO_REFERENCE_ERROR: There is no reference image. Screenshot has been moved to:\n${newPath}`
@@ -90,7 +79,7 @@ class Viz {
       return new Promise( (resolve, reject) => {
         if(element) {
           return this.getDimensions(element)
-            .then((dimensions) => this.crop(tmpPath, tmpPath, dimensions))
+            .then(dimensions => this.crop(tmpPath, tmpPath, dimensions))
             .then(() => resolve(tmpPath))
         } else {
           resolve(tmpPath)
@@ -99,26 +88,21 @@ class Viz {
     }
 
     // Helper to make the promise chain more readable.
-    // Note the deliberate use of => so the function is created like fn.bind(this)
     const lookForRefImage = () => {
       return this.exists(refPath)
     }
 
 
-    // return new Promise((resolve, reject) => {
-
-      return this.capture(name)
-        .then( lookForRefImage )
-        .then( hasReference => {
-          if (hasReference) {
-            return raiseIfMismatch(tmpPath, refPath, diffPath)
-          } else {
-            return raiseNewImageErr(tmpPath, newPath)
-          }
-        })
-        // .catch(reject)
-
-    // })
+    return this.capture(name)
+      .then( cropIfNecessary )
+      .then( lookForRefImage )
+      .then( hasReference => {
+        if (hasReference) {
+          return raiseIfMismatch(tmpPath, refPath, diffPath)
+        } else {
+          return raiseNewImageErr(tmpPath, newPath)
+        }
+      })
 
   }
 
@@ -151,7 +135,6 @@ class Viz {
       element.getLocation().then((location) => {
         left = location.x
         top = location.y
-
         return element.getSize()
       }).catch((err) => {
         reject(err)
@@ -227,6 +210,7 @@ class Viz {
 
 
   // Shink image filesize: (Overwrites original file)
+  // Note: to avoid wasted effort, this is only called when adding an image to the "new" folder.
   optimise (imagePath) {
     return new Promise((resolve, reject) => {
       // https://github.com/imagemin/imagemin
@@ -240,13 +224,6 @@ class Viz {
           else resolve(imagePath)
         });
     })
-  }
-
-  // Helper to make the promise chain more readable.
-  // Note the deliberate use of => so the function is created like fn.bind(this)
-  _lookForRefImage (name) {
-    const refPath = path.join(this.rootPath, Viz.PATHS.REF,  `${this.tag}-${name}.png`)
-    return this.exists(refPath)
   }
 
 }

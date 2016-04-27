@@ -12,15 +12,10 @@ import Viz from '../src/index.js';
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 30000
 
 describe('Viz', function() {
-  const testTag = 'test'
+  const testTag  = 'test'
   const testPath = path.join(__dirname, 'spec-screenshots');
-  const viz = new Viz(testTag, 'phantomjs', testPath);
+  const viz      = new Viz(testTag, 'phantomjs', testPath);
 
-  // Diddy synchronous helpers to DRY the spec code...
-  function fileExists(path){
-    try { return fs.statSync(path).isFile() } catch(e) { return false }
-    return false
-  }
   // Diddy asynchronous helpers to DRY the spec code...
   function createPaths () {
     return viz.createPaths(testPath)
@@ -30,6 +25,10 @@ describe('Viz', function() {
       rimraf(testPath, fs, resolve)
     })
   }
+  // Diddy synchronous helpers. Useful while writing tests...
+  function fileExists(path){
+    try { return fs.statSync(path).isFile() } catch(e) { return false }
+  }
 
 
   beforeAll(function(){
@@ -37,9 +36,14 @@ describe('Viz', function() {
     jasmine.addMatchers(customFileMatchers)
   })
 
+  // Tidy up!
+  afterAll((done) => {
+    destroyPaths().then(done)
+  })
+
   beforeEach(function(done) {
     // const samplePage = 'http://www.google.com'                     // <-- Works but will require new sample image(s)
-    const samplePage = path.join(__dirname, 'support', 'google.htm')  // <-- Faster to test local file
+    const samplePage = path.join(__dirname, 'support', 'google.htm')  // <-- Use local file for faster test run.
     viz.driver.manage().window().setSize(1100,1600)
     viz.driver.get(samplePage)
     destroyPaths().then(createPaths).then(done)
@@ -557,11 +561,81 @@ describe('Viz', function() {
 
     });
 
+    it('should save element PNG to the "new" folder when reference image is missing', function(done) {
+      // Make absolutely certain there's no old test files knocking about:
+      expect( tmpPath ).not.toFileExist()
+      expect( refPath ).not.toFileExist()
+      expect( newPath ).not.toFileExist()
+
+      const element = viz.driver.findElement(viz.Webdriver.By.css('.jsb'))
+
+      viz.visualise(title, element).then(function(result) {
+        // Unexpected outcome:
+        expect(result).toBe('a deliberate error message about NO_REFERENCE_ERROR instead')
+      }).catch(function(err){
+        // Expected outcome:
+        expect( '' + err ).toContain('NO_REFERENCE_ERROR')
+        expect( newPath  ).toFileExist()
+      })
+      .then(done)
+    });
+
+    it('should match element PNG with identical image in the "reference" folder', function(done) {
+
+      expect( refPath ).not.toFileExist()
+
+      // Setup MATCHING reference image:
+      fs.copySync(path.join(__dirname, 'support', 'google.htm.element.png'), refPath)
+      expect( tmpPath ).not.toFileExist()
+      expect( newPath ).not.toFileExist()
+      expect( newPath ).toBeEmptyFile()
+      expect( refPath ).toFileExist()
+      expect( refPath ).not.toBeEmptyFile()
+
+      const element = viz.driver.findElement(viz.Webdriver.By.css('.jsb'))
+
+      // Now we're finally ready to test the visualise method:
+      viz.visualise(title, element).then( result => {
+        expect( result  ).toBe(true)
+        expect( refPath ).toFileExist()
+      })
+
+      // Unexpected outcome.
+      .catch(function(err){
+        expect(err).toBe('not an error from the visualise method')
+      })
+      .then(done)
+
+    });
+
+    it('should reject PNG with different image in the "reference" folder', function(done) {
+
+      expect( refPath ).not.toFileExist()
+
+      // Setup DIFFERING reference image:
+      fs.copySync(path.join(__dirname, 'support', 'google-alt.png'), refPath)
+      expect( tmpPath ).not.toFileExist()
+      expect( newPath ).not.toFileExist()
+      expect( newPath ).toBeEmptyFile()
+      expect( refPath ).toFileExist()
+      expect( refPath ).not.toBeEmptyFile()
+
+      const element = viz.driver.findElement(viz.Webdriver.By.css('.jsb'))
+
+      // Now we're finally ready to test the visualise method:
+      viz.visualise(title, element).then( result => {
+        // Unexpected outcome:
+        expect(result).toBe('a deliberate error message about NO_REFERENCE_ERROR instead')
+      }).catch(function(err){
+        // Expected outcome:
+        expect( '' + err ).toContain('VISUAL_MATCH_FAIL')
+        expect( diffPath ).toFileExist()
+        expect( diffPath ).not.toBeEmptyFile()
+      })
+      .then(done)
+
+    });
+
   });
 
-
-  // Tidy up!
-  // afterAll((done) => {
-  //   rimraf(testPath, fs, done)
-  // })
 });
