@@ -7,7 +7,7 @@
     "clean": "rimraf lib",
     "build": "babel src -d lib",
     "test": "jasmine",
-    "demo": "jasmine JASMINE_CONFIG_PATH=demo/spec/support/jasmine.json",
+    "demo": "jasmine JASMINE_CONFIG_PATH=spec/support/jasmine.json",
     "demo:server": "babel-node demo/server.js"
   },
   "author": "Richard Harrison <richard.harrison@baesystems.com>",
@@ -20,9 +20,11 @@
     "babel-register": "^6.4.3",
     "express": "^4.13.4",
     "jasmine": "^2.4.1",
+    "node-fs-extra": "^0.8.1",
     "selenium-webdriver": "^2.48.2"
   },
   "dependencies": {
+    "imagemin": "^4.0.0",
     "mkdirp": "^0.5.1",
     "pixelmatch": "^4.0.1",
     "png-crop": "0.0.0",
