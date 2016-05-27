@@ -1,5 +1,5 @@
 {
-  "name": "viz",
+  "name": "vizjs",
   "version": "1.1.0",
   "description": "A visual regression tool for use with testing libraries.",
   "main": "lib/index.js",
@@ -7,7 +7,7 @@
     "clean": "rimraf lib",
     "build": "babel src -d lib",
     "test": "jasmine",
-    "demo": "jasmine JASMINE_CONFIG_PATH=spec/support/jasmine.json",
+    "demo": "jasmine JASMINE_CONFIG_PATH=demo/support/jasmine.json",
     "demo:server": "babel-node demo/server.js"
   },
   "author": "Richard Harrison <richard.harrison@baesystems.com>",
@@ -20,7 +20,9 @@
     "babel-register": "^6.4.3",
     "express": "^4.13.4",
     "jasmine": "^2.4.1",
+    "mkdirp": "^0.5.1",
     "node-fs-extra": "^0.8.1",
+    "rimraf": "^2.5.2",
     "selenium-webdriver": "^2.48.2"
   },
   "dependencies": {

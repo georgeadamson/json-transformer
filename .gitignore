@@ -3,6 +3,7 @@ node_modules
 spec/test
 phantomjsdriver.log
 npm-debug.log
+demo/creds.js
 
 # No need to track any of the more temporary images:
 **/*screenshots/tmp/
