@@ -1,1 +1,1 @@
-module.exports = require('./lib/Viz').default
+module.exports = require('./lib/index').default
