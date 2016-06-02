@@ -9,9 +9,9 @@ class Viz {
 	 * @param {object} storage - A Viz compatible Storage object
 	 * @returns {Viz} A Viz object.
 	 */
-	constructor(storage = null) {
-		if(!storage.hasOwnProperty('isVizjsStorageObject')) {
-			throw TypeError(`Expected VizPure constructor to be called with a storage
+	constructor(storage) {
+		if((typeof storage === 'undefined') || !storage.hasOwnProperty('isVizjsStorageObject')) {
+			throw new TypeError(`Expected VizPure constructor to be called with a storage
 				object, got ${storage} instead.`)
 		} else {
 			this.storage = storage
@@ -65,11 +65,11 @@ class Viz {
 	*/
 	crop(imageBuffer = null, dimensions = null) {
 		if(!Buffer.isBuffer(imageBuffer)) {
-			throw TypeError(`Expected imageBuffer to be of type <Buffer>, got ${imageBuffer}`)
+			throw new TypeError(`Expected imageBuffer to be of type <Buffer>, got ${imageBuffer}`)
 		}
 		if(!this._validateDimensions(dimensions)) {
-				throw TypeError(`Expected dimensions to be <Object> with properties 'x', 'y', 'width' and 'height'
-					got ${dimensions}`)
+			throw new TypeError(`Expected dimensions to be <Object> with properties 'x', 'y', 'width' and 'height'
+				got ${dimensions}`)
 		}
 
 		let sourcePNG = PNG.sync.read(imageBuffer)
@@ -91,7 +91,7 @@ class Viz {
 	*/
 	_base64Encode(imageBuffer) {
 		if(!Buffer.isBuffer(imageBuffer)) {
-			throw TypeError(`Expected imageBuffer to be of type <Buffer>, got ${imageBuffer}`)
+			throw new TypeError(`Expected imageBuffer to be of type <Buffer>, got ${imageBuffer}`)
 		}
 		return imageBuffer.toString('base64')
 	}
@@ -103,7 +103,7 @@ class Viz {
 	*/
 	_base64Decode(imageData) {
 		if(typeof imageData !== 'string') {
-			throw TypeError(`Expected imageData to be of type <String>, got ${typeof imageData}`)
+			throw new TypeError(`Expected imageData to be of type <String>, got ${typeof imageData}`)
 		}
 		return new Buffer(imageData, 'base64')
 	}
@@ -125,4 +125,4 @@ class Viz {
 	}
 }
 
-export default VizPure;
+export default Viz;
