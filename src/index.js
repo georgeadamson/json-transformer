@@ -92,7 +92,7 @@ class Viz {
 	* @param {Buffer} imageBuffer - A Buffer of raw png image data
 	* @return {string} Base64 encoded PNG data
 	*/
-	_base64Encode(imageBuffer) {
+	base64Encode(imageBuffer) {
 		if(!Buffer.isBuffer(imageBuffer)) {
 			throw new TypeError(`Expected imageBuffer to be of type <Buffer>, got ${imageBuffer}`)
 		}
@@ -104,7 +104,7 @@ class Viz {
 	* @param {string} imageData - A string of base64 encoded PNG image data
 	* @return {Buffer} A buffer of raw PNG image data
 	*/
-	_base64Decode(imageData) {
+	base64Decode(imageData) {
 		if(typeof imageData !== 'string') {
 			throw new TypeError(`Expected imageData to be of type <String>, got ${typeof imageData}`)
 		}
