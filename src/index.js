@@ -52,10 +52,7 @@ class Viz {
 
 			this.storage.write(PNG.sync.write(diffImg), imageTag, this.storage.LABELS.DIF)
 
-			console.log(diffPixels);
-			// let diffImage = new PNG({width: refImage.width})
-			//
-			// let diff = pixelmatch(img1, img2, )
+			return (diffPixels === 0)
 		}
 	}
 
