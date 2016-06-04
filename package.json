@@ -1,4 +1,4 @@
-{
+  {
   "name": "vizjs",
   "version": "2.0.0",
   "description": "A visual regression tool for use with testing libraries.",
