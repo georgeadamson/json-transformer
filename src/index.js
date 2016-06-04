@@ -22,19 +22,25 @@ class Viz {
 
 	/**
 	* Compare an image against existing reference data (if available)
-	* @param {string} imageData - Base64 encoded PNG
+	* @param {Buffer} imageBuffer - A buffer containing raw PNG data
 	* @param {string} imageTag - A string uniquely identifying the screenshot to be compared
 	* @returns {boolean} A boolean representing a match or no-match result from the image comparison
 	*/
-	compare(imageData, imageTag) {
-		let imageBuffer = this._base64Decode(imageData);
+	compare(imageBuffer, imageTag) {
+		if(!Buffer.isBuffer(imageBuffer)) {
+			throw new TypeError(`Expected imageBuffer to be of type <Buffer>, got ${typeof(imageBuffer)}`)
+		}
+
+		if(typeof imageTag !== 'string') {
+			throw new TypeError(`Expected imageTag to be of type <string>, got ${typeof(imageTag)}`)
+		}
 
 		if(!this.storage.exists(imageTag, this.storage.LABELS.REF)) {
 			storage.write(imageBuffer, imageTag, this.storage.LABELS.NEW)
 			return false
 		} else {
 			let refImg = PNG.sync.read(this.storage.read(imageTag, this.storage.LABELS.REF))
-			let testImg = PNG.sync.read(this._base64Decode(imageData))
+			let testImg = PNG.sync.read(imageBuffer)
 			let imgWidth = Math.min(refImg.width, testImg.width)
 			let imgHeight = Math.min(refImg.height, testImg.height)
 			let diffImg = new PNG({
