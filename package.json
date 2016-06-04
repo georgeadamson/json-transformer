@@ -1,4 +1,4 @@
-  {
+{
   "name": "vizjs",
   "version": "2.0.0",
   "description": "A visual regression tool for use with testing libraries.",
@@ -16,6 +16,7 @@
     "babel-plugin-transform-class-properties": "^6.9.1",
     "babel-plugin-transform-object-rest-spread": "^6.8.0",
     "babel-preset-es2015": "^6.9.0",
+    "jasmine": "^2.4.1",
     "jsdoc": "^3.4.0"
   },
   "dependencies": {
