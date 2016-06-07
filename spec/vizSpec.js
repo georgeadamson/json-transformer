@@ -1,9 +1,11 @@
 import fs from 'fs'
 import path from 'path'
-import Viz from '../src/index'
+import Viz from '../lib/index'
+// import Storage from '../node_modules/vizjs-storage-fs/src/index'
 
 const imageBuffer = fs.readFileSync(path.join(__dirname, 'support', 'blackadder.png'))
 const imageBufferError = fs.readFileSync(path.join(__dirname, 'support', 'blackadder-error.png'))
+// const storageObject = new Storage()
 const storageObject = {
   LABELS: { REF: 'ref', DIF: 'dif', NEW: 'new' },
   isVizjsStorageObject: () => { return true },
