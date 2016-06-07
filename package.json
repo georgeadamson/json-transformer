@@ -1,6 +1,6 @@
 {
   "name": "vizjs",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A visual regression tool for use with testing libraries.",
   "main": "lib/index.js",
   "scripts": {
