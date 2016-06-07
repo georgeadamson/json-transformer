@@ -47,7 +47,9 @@ class Viz {
 
 			let diffPixels = pixelmatch(refImg.data, testImg.data, diffImg.data, imgWidth, imgHeight, {threshold: 0.1})
 
-			this.storage.write(PNG.sync.write(diffImg), imageTag, this.storage.LABELS.DIF)
+			if(diffPixels > 0) {
+				this.storage.write(PNG.sync.write(diffImg), imageTag, this.storage.LABELS.DIF)
+			}
 
 			return (diffPixels === 0)
 		}
