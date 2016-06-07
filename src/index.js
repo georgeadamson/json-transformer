@@ -10,14 +10,11 @@ class Viz {
 	 * @returns {Viz} A Viz object.
 	 */
 	constructor(storage) {
-		if((typeof storage === 'undefined') || !storage.hasOwnProperty('isVizjsStorageObject')) {
+		if((typeof storage === 'undefined') || !storage.isVizjsStorageObject()) {
 			throw new TypeError(`Expected VizPure constructor to be called with a storage
 				object, got ${storage} instead.`)
-		} else {
-			this.storage = storage
 		}
-
-		return this
+		this.storage = storage
 	}
 
 	/**
@@ -36,7 +33,7 @@ class Viz {
 		}
 
 		if(!this.storage.exists(imageTag, this.storage.LABELS.REF)) {
-			storage.write(imageBuffer, imageTag, this.storage.LABELS.NEW)
+			this.storage.write(imageBuffer, imageTag, this.storage.LABELS.NEW)
 			return false
 		} else {
 			let refImg = PNG.sync.read(this.storage.read(imageTag, this.storage.LABELS.REF))
