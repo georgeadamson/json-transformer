@@ -1,9 +1,11 @@
-# JSONTransformer - Convert JSON to a new shape. [![Build Status][ci-img]][ci] [![Dependencies][deps-img]][deps]
+# JSONTransformer - Convert JSON to a new shape. [![Build Status][ci-img]][ci] [![Dependencies][deps-img]][deps] [![Dependencies][devdeps-img]][devdeps]
 
 [ci-img]:  https://travis-ci.org/georgeadamson/json-transformer.svg
 [ci]:      https://travis-ci.org/georgeadamson/json-transformer
-[deps-img]: https://david-dm.org/georgeadamson/postcss-merge-selectors.svg
-[deps]:     https://david-dm.org/georgeadamson/postcss-merge-selectors
+[deps-img]: https://david-dm.org/georgeadamson/json-transformer.svg
+[deps]:     https://david-dm.org/georgeadamson/json-transformer#info=dependencies&view=tree
+[devdeps-img]: https://david-dm.org/georgeadamson/json-transformer/dev-status.svg
+[devdeps]:     https://david-dm.org/georgeadamson/json-transformer#info=devDependencies&view=tree
 
 
 Define your new JSON shape simply as a JS object, using ${interpolation} or functions to generate new property values.
