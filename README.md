@@ -21,37 +21,37 @@ Note:
 
 ### Example
 ```js
-var json = { "firstName": "Fred", "lastName": "Flintstone" }
-var tmpl = { "greeting": "My name is ${firstName} ${lastName}" }
+var json = { 'firstName': 'Fred', 'lastName': 'Flintstone' }
+var tmpl = { 'greeting': 'My name is ${firstName} ${lastName}' }
 
 var result = JSONTransformer.transform(json, tmpl)
 
 // result:
-{ greeting: "My name is Fred Flintstone" }
+{ greeting: 'My name is Fred Flintstone' }
 ```
 
 ### Example with nesting and functions
 ```js
 var json = {
   name: {
-    first: "Fred",
-    last: "Flintstone"
+    first: 'Fred',
+    last: 'Flintstone'
   },
-  dateOfBirth: "2000-01-01"
+  dateOfBirth: '2000-01-01'
 }
 
 var tmpl = {
-  name: "My name is ${name.first} ${name.first}",
+  name: 'My name is ${name.first} ${name.first}',
   greeting: function(json){
-    var dob = json.dateOfBirth.
-    return 'Yay ' + json.name.first + ', you were born on ' + json.dob.toDateString()
+    var dob = new Date(json.dateOfBirth)
+    return 'Yay ' + json.name.first + ', you were born on ' + dob.toDateString()
   }
 };
 
 var result = JSONTransformer.transform(json, tmpl);
 
 // result:
-{ name: "Fred Flintstone", greeting: "Yay Fred, you were born on Sat Jan 01 2000" }
+{ name: 'Fred Flintstone', greeting: 'Yay Fred, you were born on Sat Jan 01 2000' }
 ```
 
 
