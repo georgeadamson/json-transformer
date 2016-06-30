@@ -58,3 +58,8 @@ You can override any default config option(s) by supplying values in a map like 
   ignoreUnderscoreProperties : false  // Specify true to omit any properties that begin with an underscore.
 }
 ```
+
+
+### Credits
+Inspired by and adapted from http://www.openwebosproject.org/docs/developer_reference/foundations/json_transformer/#transformer.transform
+Although functional, more work is required to tidy up some of the old code.
