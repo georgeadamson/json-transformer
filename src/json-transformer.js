@@ -25,7 +25,7 @@ const JSONTransformer = {
   * @param {string}             config   - Optionally override default config settings
   * @returns {object} Beautiful new JSON object
   */
-  transform : function transform (json, template, config) {
+  transform : function transform (json, template = json, config = null, context = this) {
     const _config = Object.assign({}, DEFAULT_CONFIG, config);
     this._transformCache = {};
     this._expandExpr = expandExpr;
@@ -37,10 +37,10 @@ const JSONTransformer = {
 
     return ObjectUtils.clone(template, _config, node => {
       if (node) {
-        if (typeof node === 'function') {
-          return node(json);
-        } else if ({}.toString.call(node) === '[object String]' && ~node.indexOf('${')) {
+        if ({}.toString.call(node) === '[object String]' && ~node.indexOf('${')) {
           return this._expandExpr(json, node);
+        } else if ({}.toString.call(node) === '[object Function]') {
+          return node.call(context, json);
         }
       }
       return node;

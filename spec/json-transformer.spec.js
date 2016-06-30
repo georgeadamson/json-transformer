@@ -25,6 +25,11 @@ describe('json-transformer', function() {
     expect( {}.toString.call(JSONTransformer.transform) ).toBe('[object Function]');
   });
 
+  it('should return json as-is when no template specified', function () {
+    const json = { 'firstName': 'Whatever', 'lastName': 'Whatever' };
+    expect( JSONTransformer.transform(json) ).toEqual(json);
+  });
+
   it('should transform simple template with no transformations', function () {
     const json = { 'firstName': 'Whatever', 'lastName': 'Whatever' };
     const tmpl = { greeting: 'My name is Fred Flintstone' };
@@ -98,5 +103,21 @@ describe('json-transformer', function() {
   it('should honour config setting: ignoreFunctions', function () {
     expect( JSONTransformer.transform({foo:10}, {bar: function(json){ return json.foo * 2 } }, { ignoreFunctions: false }) ).toEqual({bar:20});
     expect( JSONTransformer.transform({foo:10}, {bar: function(json){ return json.foo * 2 } }, { ignoreFunctions: true  }) ).toEqual({});
+  });
+
+  it('should execute functions in a custom context if specified', function () {
+    var context = { foo: 'Expected context' };
+    var wrong = { foo: 'Wrong context' };
+    function fn(){ return this }
+
+    // Specify context via additional argument:
+    expect( JSONTransformer.transform({}, {foo: fn}, null, this   ) ).toEqual({foo: this   });
+    expect( JSONTransformer.transform({}, {foo: fn}, null, context) ).toEqual({foo: context});
+
+    // Run in function's bound context if has one:
+    expect( JSONTransformer.transform({}, {foo: fn.bind(this)   }             ) ).toEqual({foo: this   });
+    expect( JSONTransformer.transform({}, {foo: fn.bind(context)}             ) ).toEqual({foo: context});
+    expect( JSONTransformer.transform({}, {foo: fn.bind(this)   }, null, wrong) ).toEqual({foo: this   });
+    expect( JSONTransformer.transform({}, {foo: fn.bind(context)}, null, wrong) ).toEqual({foo: context});
   });
 })
