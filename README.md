@@ -11,12 +11,13 @@ Your template defines the new json format.
 ```js
 import JSONTransformer from 'json-transformer'
 
-JSONTransformer.transform(json, template [, config])
+JSONTransformer.transform(json, template [, config] [, context])
 ```
 
 Note:
 - The `json` argument can be an *object* or a valid json *string*.
 - The `template` object represents the shape of your desired json output.
+- Use the `context` argument to define "this" in your functions. (Note that it does not override a context specified via .bind() )
 
 
 ### Example
