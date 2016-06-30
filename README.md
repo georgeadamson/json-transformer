@@ -11,7 +11,7 @@ Your template defines the new json format.
 ```js
 import JSONTransformer from 'json-transformer'
 
-JSONTransformer.transform(json, template [, config] [, context])
+JSONTransformer.transform(json, template [, config [, context] ])
 ```
 
 Note:
