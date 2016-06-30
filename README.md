@@ -1,6 +1,6 @@
 # JSONTransformer - Convert JSON to a new shape.
 
-Use interpolation or functions to generate new property values.
+Define your new JSON shape simply as a JS object, using ${interpolation} or functions to generate new property values.
 <br>
 Your template defines the new json format.
 

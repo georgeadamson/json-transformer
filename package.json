@@ -1,7 +1,7 @@
 {
-  "name": "vizjs",
-  "version": "2.0.1",
-  "description": "A visual regression tool for use with testing libraries.",
+  "name": "JSONTransformer",
+  "version": "0.0.1",
+  "description": "A tool to convert JSON to a new JSON shape.",
   "main": "lib/index.js",
   "scripts": {
     "clean": "rimraf lib",
@@ -10,7 +10,7 @@
     "test": "npm run build && jasmine",
     "docs": "jsdoc -d docs src/json-transformer.js"
   },
-  "author": "Richard Harrison <mindintransti@gmail.com>",
+  "author": "George Adamson <george@adamson.com>",
   "license": "ISC",
   "devDependencies": {
     "babel-cli": "^6.9.0",
@@ -20,8 +20,5 @@
     "jasmine": "^2.4.1",
     "jsdoc": "^3.4.0",
     "rimraf": "^2.5.2"
-  },
-  "dependencies": {
-    "mkdirp": "^0.5.1"
   }
 }
