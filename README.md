@@ -57,7 +57,7 @@ var result = JSONTransformer.transform(json, tmpl);
 
 ### Config options
 
-You can override any default config option(s) by supplying values in a map like this one:
+You can override any default config option(s) by supplying a map of one or more key:value pairs like this:
 
 ```js
 var config = {
