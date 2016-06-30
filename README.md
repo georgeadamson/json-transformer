@@ -13,7 +13,7 @@ JSONTransformer.transform(json, template [, config])
 
 Note:
 - The `json` argument can be an *object* or a valid json *string*.
-- The `template` represents the shape of your desired json output.
+- The `template` object represents the shape of your desired json output.
 
 
 ### Example
