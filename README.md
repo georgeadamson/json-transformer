@@ -6,20 +6,24 @@ Your template defines the new json format.
 
 ### Syntax
 ```js
-import JSONTransformer from 'json-transformer';
+import JSONTransformer from 'json-transformer'
 
-JSONTransformer.transform(json, template [, config]);
+JSONTransformer.transform(json, template [, config])
 ```
-Note that the json argument can be a js **object** or a valid json **string**.
+
+Note:
+- The `json` argument can be an *object* or a valid json *string*.
+- The `template` represents the shape of your desired json output.
+
 
 ### Example
 ```js
-var json = { "firstName": "Fred", "lastName": "Flintstone" };
-var tmpl = { "greeting": "My name is ${firstName} ${lastName}" };
+var json = { "firstName": "Fred", "lastName": "Flintstone" }
+var tmpl = { "greeting": "My name is ${firstName} ${lastName}" }
 
-JSONTransformer.transform(json, tmpl);
+var result = JSONTransformer.transform(json, tmpl)
 
-// Result:
+// result:
 { greeting: "My name is Fred Flintstone" }
 ```
 
@@ -31,27 +35,29 @@ var json = {
     last: "Flintstone"
   },
   dateOfBirth: "2000-01-01"
-};
+}
+
 var tmpl = {
   name: "My name is ${name.first} ${name.first}",
   greeting: function(json){
     var dob = json.dateOfBirth.
-    return 'Yay ' + json.name.first + ', you were born on ' + json.dob.toDateString();
+    return 'Yay ' + json.name.first + ', you were born on ' + json.dob.toDateString()
   }
 };
 
-JSONTransformer.transform(json, tmpl);
+var result = JSONTransformer.transform(json, tmpl);
 
-// Result:
+// result:
 { name: "Fred Flintstone", greeting: "Yay Fred, you were born on Sat Jan 01 2000" }
 ```
+
 
 ### Config options
 
 You can override any default config option(s) by supplying values in a map like this one:
 
 ```js
-{
+var config = {
   ignoreFunctions            : false, // Specify true to skip properties that are defined in your template as functions.
   ignoreEmptyObjects         : false, // Specify true to omit empty objects from the result.
   ignoreEmptyArrays          : false, // Specify true to omit empty arrays from the result.
