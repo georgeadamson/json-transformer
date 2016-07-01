@@ -3,7 +3,7 @@
 
 import ObjectUtils from './json-transformer-objectutils.js';
 import expandExpr from './json-transformer-expandexpr.js';
-
+import Handlebars from 'handlebars';
 
 const DEFAULT_CONFIG = {
   ignoreFunctions            : false,
@@ -45,6 +45,18 @@ const JSONTransformer = {
       }
       return node;
     });
+  },
+
+  tx : function tx (json, template) {
+
+    template = JSON.stringify(template)
+
+    var transform = Handlebars.compile( JSON.stringify(template) );
+    var resultString = transform(json);
+    var result = JSON.parse(resultString);
+
+    return result
+
   }
 
 };

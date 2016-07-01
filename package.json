@@ -20,5 +20,8 @@
     "jasmine": "^2.4.1",
     "jsdoc": "^3.4.0",
     "rimraf": "^2.5.2"
+  },
+  "dependencies": {
+    "handlebars": "^4.0.5"
   }
 }
