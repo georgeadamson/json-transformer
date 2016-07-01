@@ -123,7 +123,7 @@ describe('json-transformer', function() {
 
   it('should tx!', function () {
     const json = { person: {'displayName' : 'Fred', surname : 'Flintstone', building:'3-1' }};
-    const tmpl = { user: { FirstName: '{{person.displayName}}', LastName: '{{person.surname}}' }};
+    const tmpl = { user: { FirstName: '${person.displayName}', LastName: '${person.surname}' }};
     const expectedResult = { user: { FirstName: 'Fred', LastName: 'Flintstone' } };
     // expect( JSONTransformer.tx(json,tmpl) ).toEqual(expectedResult);
     console.log(JSONTransformer.tx(json,tmpl))

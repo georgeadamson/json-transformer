@@ -31,15 +31,15 @@ const JSONTransformer = {
     this._expandExpr = expandExpr;
 
     // Just in case json object was provided as a json string:
-    if ({}.toString.call(json) === '[object String]' && (json.indexOf('{') === 0 || json.indexOf('[') === 0)) {
+    if (Object.prototype.toString.call(json) === '[object String]' && (json.indexOf('{') === 0 || json.indexOf('[') === 0)) {
       json = JSON.parse(json);  // eslint-disable-line no-param-reassign
     }
 
     return ObjectUtils.clone(template, _config, node => {
       if (node) {
-        if ({}.toString.call(node) === '[object String]' && ~node.indexOf('${')) {
+        if (Object.prototype.toString.call(node) === '[object String]' && ~node.indexOf('${')) {
           return this._expandExpr(json, node);
-        } else if ({}.toString.call(node) === '[object Function]') {
+        } else if (Object.prototype.toString.call(node) === '[object Function]') {
           return node.call(context, json);
         }
       }
@@ -49,7 +49,15 @@ const JSONTransformer = {
 
   tx : function tx (json, template) {
 
-    template = JSON.stringify(template)
+    if( Object.prototype.toString.call(json) !== '[object String]' ) {
+      template = JSON.stringify(template);
+    }
+
+    var match;
+    var re = new RegExp('\\${' + '([\\s\\S]+?)' + '}', 'g');
+    while (match = re.exec(template)) {
+      template = template.replace(re, '{{' + match[1] + '}}');
+    }
 
     var transform = Handlebars.compile( JSON.stringify(template) );
     var resultString = transform(json);
