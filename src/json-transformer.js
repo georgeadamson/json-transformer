@@ -31,15 +31,15 @@ const JSONTransformer = {
     this._expandExpr = expandExpr;
 
     // Just in case json object was provided as a json string:
-    if ({}.toString.call(json) === '[object String]' && (json.indexOf('{') === 0 || json.indexOf('[') === 0)) {
+    if (Object.prototype.toString.call(json) === '[object String]' && (json.indexOf('{') === 0 || json.indexOf('[') === 0)) {
       json = JSON.parse(json);  // eslint-disable-line no-param-reassign
     }
 
     return ObjectUtils.clone(template, _config, node => {
       if (node) {
-        if ({}.toString.call(node) === '[object String]' && ~node.indexOf('${')) {
+        if (Object.prototype.toString.call(node) === '[object String]' && ~node.indexOf('${')) {
           return this._expandExpr(json, node);
-        } else if ({}.toString.call(node) === '[object Function]') {
+        } else if (Object.prototype.toString.call(node) === '[object Function]') {
           return node.call(context, json);
         }
       }

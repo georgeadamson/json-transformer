@@ -31,7 +31,7 @@ const ObjectUtils = {
       return 'string';
     } else if (model === true || model === false) {
       return 'boolean';
-    } else if ({}.toString.call(model) === '[object Array]') {
+    } else if (Object.prototype.toString.call(model) === '[object Array]') {
       return 'array';
     } else if (typeof model === 'function') {
       return 'function';
