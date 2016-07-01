@@ -62,7 +62,7 @@ describe('json-transformer', function() {
   it('should transform template namespaced ${string.literals}', function () {
     const json = { person: {'displayName' : 'Fred', surname : 'Flintstone', building:'3-1' }};
     const tmpl = { user: { FirstName: '${person.displayName}', LastName: '${person.surname}', Country : 'USA', State:'CA', Location: '${person.building}' } };
-    const expectedResult = { user: Object({ FirstName: 'Fred', LastName: 'Flintstone', Country: 'USA', State: 'CA', Location: '3-1' }) };
+    const expectedResult = { user: { FirstName: 'Fred', LastName: 'Flintstone', Country: 'USA', State: 'CA', Location: '3-1' } };
     expect( JSONTransformer.transform(json,tmpl) ).toEqual(expectedResult);
   });
 
